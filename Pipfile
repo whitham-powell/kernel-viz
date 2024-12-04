@@ -1,0 +1,29 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+pandas = "*"
+numpy = "*"
+matplotlib = "*"
+seaborn = "*"
+scikit-learn = "*"
+scipy = "*"
+
+[dev-packages]
+ipykernel = "*"
+flake8 = "*"
+black = "*"
+isort = "*"
+pytest-cov = "*"
+pytest = "*"
+mypy = "*"
+bandit = "*"
+yamllint = "*"
+pyyaml = "*"
+pre-commit = "*"
+
+[requires]
+python_version = "3.13"
+python_full_version = "3.13.0"
