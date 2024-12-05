@@ -31,6 +31,8 @@ repos:
     rev: v1.13.0
     hooks:
       - id: mypy
+        additional_dependencies:
+          - numpy
         args: ["--strict"] # Enforces strict type-checking
         files: \.py$ # Target only Python files
   # Security Tools
