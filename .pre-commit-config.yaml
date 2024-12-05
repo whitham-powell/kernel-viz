@@ -33,8 +33,7 @@ repos:
       - id: mypy
         additional_dependencies:
           - numpy
-        args: ["--strict"] # Enforces strict type-checking
-        files: \.py$ # Target only Python files
+        args: ["--config-file=setup.cfg"]
   # Security Tools
   - repo: https://github.com/PyCQA/bandit
     rev: 1.8.0
@@ -44,7 +43,7 @@ repos:
         entry: bandit
         args: ["-r", "src/"]
         stages: [pre-push] # Run Bandit only on push
-        exclude: "src/tests/.*" # Skip test files
+        exclude: "./tests/.*" # Skip test files
   # Miscellaneous
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
