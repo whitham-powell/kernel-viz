@@ -47,3 +47,31 @@ def predict(
         [alphas[i] * kernel(xs[i], x_new, **kernel_params) for i in range(len(xs))],
     )
     return 1 if f_x_new > 0 else -1
+
+
+class PerceptronLogger:
+    def __init__(self) -> None:
+        self.logs: Dict[str, Any] = {
+            "misclassification_count": [],
+            "alphas": [],
+            "kernel": None,
+            "kernel_params": None,
+            "feature_space": None,
+        }
+
+    def log_misclassification_count(self, count: int) -> None:
+        self.logs["misclassification_county"].append(count)
+
+    def log_alphas(self, epoch_step: int, alphas: NDArray[np.float64]) -> None:
+        self.logs["alphas"].append({"iteration": epoch_step, "alphas": alphas.copy()})
+
+    def log_kernel(
+        self,
+        kernel: Callable[[ArrayLike, ArrayLike], Union[float, ArrayLike]],
+        kernel_params: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        self.logs["kernel"] = kernel
+        self.logs["kernel_params"] = kernel_params
+
+    def get_logs(self) -> Dict[str, Any]:
+        return self.logs
