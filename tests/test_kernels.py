@@ -12,6 +12,8 @@ from src.kernels import (
 )
 
 
+# TODO: Should parameterize these test for x and y datatypes (ints, floats, numpy arrays, etc.)?
+# TODO: Should we parameterize these test classes for each kernel function?
 class TestLinearKernel:
     def test_basic_ints(self):
         x = [1, 2]
