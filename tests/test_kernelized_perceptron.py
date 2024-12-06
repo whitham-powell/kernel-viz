@@ -171,6 +171,8 @@ class TestKernelizedPerceptron:
         xs = np.array([[1, 1], [2, 2], [3, 3]], dtype=np.float64)
         ys = np.array([1, 1, -1], dtype=np.float64)
         alphas = kernelized_perceptron(xs, ys, kernel_func, kwargs)
-        assert len(alphas) == len(
-            xs,
-        ), "Alpha vector length must equal the number of training samples."
+        len_alphas = len(alphas)
+        len_xs = len(xs)
+        assert (
+            len_alphas == len_xs
+        ), f"Alpha vector length must equal the number of training samples. Got {len_alphas} alphas for {len_xs} samples."
