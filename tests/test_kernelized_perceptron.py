@@ -7,8 +7,8 @@ from src.kernelized_perceptron import kernelized_perceptron, predict
 from src.kernels import (
     affine_kernel,
     exponential_kernel,
-    kernel_func,
     laplacian_kernel,
+    linear_kernel,
     polynomial_kernel,
     quadratic_kernel,
     rbf_gaussian_kernel,
@@ -51,7 +51,7 @@ def generate_id_test_kernels(param):
 
 
 test_kernels = [
-    (kernel_func, {}),
+    (linear_kernel, {}),
     (affine_kernel, {"c": 1.0}),
     (quadratic_kernel, {}),
     (polynomial_kernel, {"degree": 3, "c": 1.0}),
