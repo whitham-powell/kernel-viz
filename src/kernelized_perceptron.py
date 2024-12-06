@@ -14,6 +14,10 @@ def kernelized_perceptron(
     max_iter: int = 100,
 ) -> NDArray[np.float64]:
     n_samples = len(xs)
+
+    if n_samples == 0:
+        return np.array([])
+
     alphas = np.zeros(n_samples)
     alphas[0] = ys[0]
 
@@ -28,7 +32,7 @@ def kernelized_perceptron(
                 ],
             )
             if yi * f0_xi < 0:
-                alphas[i] = yi
+                alphas[i] += yi
     return alphas
 
 

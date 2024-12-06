@@ -1,102 +1,176 @@
 # test_kernelized_perceptron.py
-from dataclasses import dataclass
 
 import numpy as np
 import pytest
 
-# from src.kernelized_perceptron import kernelized_perceptron, predict
-# from src.kernels import (
-#     affine_kernel,
-#     exponential_kernel,
-#     laplacian_kernel,
-#     linear_kernel,
-#     polynomial_kernel,
-#     quadratic_kernel,
-#     rbf_gaussian_kernel,
-# )
+from src.kernelized_perceptron import kernelized_perceptron, predict
+from src.kernels import (
+    affine_kernel,
+    exponential_kernel,
+    kernel_func,
+    laplacian_kernel,
+    polynomial_kernel,
+    quadratic_kernel,
+    rbf_gaussian_kernel,
+)
 
 
-@dataclass
-class NPArrTestData:
-    x_train: np.ndarray
-    y_train: np.ndarray
+@pytest.fixture(params=["linear", "xor", "single_point", "empty"])
+def test_dataset(request):
+    """
+    Provides different datasets for testing the kernelized perceptron.
+    """
+    if request.param == "linear":
+        xs = np.array([[1, 2], [2, 3], [3, 1], [5, 2]], dtype=np.float64)
+        ys = np.array([1, 1, -1, -1], dtype=np.float64)
+    elif request.param == "xor":
+        xs = np.array([[0, 0], [1, 1], [0, 1], [1, 0]], dtype=np.float64)
+        ys = np.array([1, 1, -1, -1], dtype=np.float64)
+    elif request.param == "single_point":
+        xs = np.array([[1, 1]], dtype=np.float64)
+        ys = np.array([1], dtype=np.float64)
+    elif request.param == "empty":
+        xs = np.empty((0, 2), dtype=np.float64)
+        ys = np.empty(0, dtype=np.float64)
+    else:
+        raise ValueError(f"Unknown dataset type: {request.param}")
+
+    return xs, ys, request.param
 
 
-@pytest.fixture
-def np_arr_test_data():
-    x_train = np.array([[1, 1], [2, 2], [3, 3]])
-    y_train = np.array([1, -1, 1])
-    return NPArrTestData(x_train, y_train)
+def generate_id_test_kernels(param):
+    kernel_func_name = ""
+    kwargs_str = ""
+    print(f"Debug param: {param} (type: {type(param)})")
+    if callable(param):
+        kernel_func_name = param.__name__
+        return f"{kernel_func_name}"
+    if isinstance(param, dict):
+        kwargs_str = ", ".join(f"{k}={v}" for k, v in param.items())
+        return f"with_{kwargs_str or 'no_args'}"
 
 
-# class TestKernelizedPerceptron:
-#     # x_train = np.array([[1, 1], [2, 2], [3, 3]])
-#     # y_train = np.array([1, -1, 1])
+test_kernels = [
+    (kernel_func, {}),
+    (affine_kernel, {"c": 1.0}),
+    (quadratic_kernel, {}),
+    (polynomial_kernel, {"degree": 3, "c": 1.0}),
+    (rbf_gaussian_kernel, {"sigma": 1.0}),
+    (exponential_kernel, {"sigma": 1.0}),
+    (laplacian_kernel, {"gamma": 1.0}),
+]
 
-# def generate_id(param):
-#     kernel_func_name = ""
-#     kwargs_str = ""
-#     print(f"Debug param: {param} (type: {type(param)})")
-#     if callable(param):
-#         kernel_func_name = param.__name__
-#         return f"{kernel_func_name}"
-#     if isinstance(param, dict):
-#         kwargs_str = ", ".join(f"{k}={v}" for k, v in param.items())
-#         return f"with_{kwargs_str or 'no_args'}"
 
-# @pytest.mark.parametrize(
-#     "kernel_func, kwargs",
-#     [
-#         (linear_kernel, {}),
-#         (affine_kernel, {"c": 1.0}),
-#         (quadratic_kernel, {}),
-#         (polynomial_kernel, {"degree": 3, "c": 1.0}),
-#         (rbf_gaussian_kernel, {"sigma": 1.0}),
-#         (exponential_kernel, {"sigma": 1.0}),
-#         (laplacian_kernel, {"gamma": 1.0}),
-#     ],
-#     ids=generate_id,
-# )
-# def test_kernelized_perceptron(self, np_arr_test_data, kernel_func, kwargs):
-#     x_train = np_arr_test_data.x_train
-#     y_train = np_arr_test_data.y_train
+@pytest.mark.parametrize(
+    "kernel_func, kwargs",
+    test_kernels,
+    ids=generate_id_test_kernels,
+)
+class TestKernelizedPerceptron:
 
-#     alpha, x_arr = kernelized_perceptron(x_train, y_train, kernel_func)
-#     assert alpha.shape == (3,)
-#     assert x_arr.shape == (3, 2)
+    def test_linear_seperability(
+        self,
+        kernel_func,
+        kwargs,
+    ):
+        xs = np.array([[1, 2], [2, 3], [3, 1], [5, 2]], dtype=np.float64)
+        ys = np.array([1, 1, -1, -1], dtype=np.float64)
 
-# def test_alpha_updates(self, np_arr_test_data):
+        alphas = kernelized_perceptron(xs, ys, kernel_func, kwargs)
 
-#     x_train = np_arr_test_data.x_train
-#     y_train = np_arr_test_data.y_train
-#     alpha, _ = kernelized_perceptron(
-#         x_train,
-#         y_train,
-#         kernel=linear_kernel,
-#         max_iterations=10,
-#     )
-#     # Check that alpha is updated for misclassified samples
-#     assert np.any(
-#         alpha > 0,
-#     ), "Alpha coefficients should update for misclassified samples."
-#     # Check that the length of alpha matches the number of samples
-#     assert len(alpha) == len(
-#         x_train,
-#     ), "Alpha vector length must equal the number of training samples."
+        for x, y in zip(xs, ys):
+            prediction = predict(xs, alphas, x, kernel_func, kwargs)
+            assert (
+                prediction == y
+            ), f"Failed to classify {x} correctly. Expected {y}, got {prediction}."
 
-# def test_predict(self, np_arr_test_data):
-#     x_train = np_arr_test_data.x_train
-#     y_train = np_arr_test_data.y_train
+    def test_XOR_handling(
+        self,
+        kernel_func,
+        kwargs,
+    ):
+        # TODO: This should be split into 2 or more tests
 
-#     alpha, x_arr = kernelized_perceptron(x_train, y_train, linear_kernel)
-#     predictions = predict(alpha, x_arr, y_train, linear_kernel)
-#     print(f"Debug predictions: {predictions}")
+        xs = np.array([[0, 0], [1, 1], [0, 1], [1, 0]], dtype=np.float64)
+        ys = np.array([1, 1, -1, -1], dtype=np.float64)
+        alphas = kernelized_perceptron(xs, ys, kernel_func, kwargs, max_iter=10)
 
-#     assert predictions.shape == (3,)
-#     assert np.all(predictions == y_train)
+        # Assert that some updates occurred
+        assert np.any(alphas != 0), (
+            f"Expected updates to alphas for XOR dataset, but no updates occurred. "
+            f"Got alphas: {alphas}."
+        )
 
-# def test_linear_seperability(self):
-#     points = np.array(
-#         [[1, 2], [2, 3], [3, 3], [5, 5], [1, 0], [0, -1], [-1, -2], [-2, -3]],
-#     )
-#     labels = np.array([1, 1, 1, 1, -1, -1, -1, -1])
+        # Check if kernel is expected to separate XOR
+        kernel_name = kernel_func.__name__
+        non_linear_kernels = {
+            "rbf_gaussian_kernel",
+            "exponential_kernel",
+            "laplacian_kernel",
+        }
+
+        # Check for misclassifications
+        misclassified = sum(
+            predict(xs, alphas, x, kernel_func, kwargs) != y for x, y in zip(xs, ys)
+        )
+
+        if kernel_name in non_linear_kernels:
+            # Allow non-linear kernels to succeed
+            assert misclassified == 0, (
+                f"Kernel {kernel_name} should classify XOR correctly but did not. "
+                f"Got alphas: {alphas}."
+            )
+        else:
+            # Expect linear kernels to fail
+            assert misclassified > 0, (
+                f"Kernel {kernel_name} incorrectly classified XOR data fully. "
+                f"Got alphas: {alphas}."
+            )
+
+    def test_empty_dataset(
+        self,
+        kernel_func,
+        kwargs,
+    ):
+        xs = np.empty((0, 2))
+        ys = np.empty(0)
+        alphas = kernelized_perceptron(xs, ys, kernel_func)
+        assert (
+            alphas.size == 0
+        ), "Expected no alphas to be returned for an empty dataset."
+
+    def test_single_sample(
+        self,
+        kernel_func,
+        kwargs,
+    ):
+        xs = np.array([[1, 1]], dtype=np.float64)
+        ys = np.array([1], dtype=np.float64)
+        alphas = kernelized_perceptron(xs, ys, kernel_func)
+        assert (
+            alphas.size == 1
+        ), "Expected a single alpha to be returned for a single sample."
+
+    def test_alphas_update(
+        self,
+        kernel_func,
+        kwargs,
+    ):
+        xs = np.array([[1, 1], [2, 2], [3, 3]], dtype=np.float64)
+        ys = np.array([1, 1, -1], dtype=np.float64)
+        alphas = kernelized_perceptron(xs, ys, kernel_func, kwargs)
+        assert np.any(
+            alphas > 0,
+        ), "Alpha coefficients should update for misclassified samples."
+
+    def test_alphas_length(
+        self,
+        kernel_func,
+        kwargs,
+    ):
+        xs = np.array([[1, 1], [2, 2], [3, 3]], dtype=np.float64)
+        ys = np.array([1, 1, -1], dtype=np.float64)
+        alphas = kernelized_perceptron(xs, ys, kernel_func, kwargs)
+        assert len(alphas) == len(
+            xs,
+        ), "Alpha vector length must equal the number of training samples."
