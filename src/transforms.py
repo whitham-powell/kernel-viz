@@ -73,6 +73,22 @@ def rotate2D(features: ArrayLike, angle: float) -> NDArray[np.float64]:
     return affine_transform(xs, A, b)
 
 
+def augment_to_3d(features: ArrayLike, constant: float = 1) -> NDArray[np.float64]:
+    """
+    Augments 2D features (x, y) to 3D features (constant, x, y).
+    """
+    xs = np.asarray(features, dtype=np.float64)
+    A = np.array(
+        [
+            [0, 0],  # Add constant
+            [1, 0],  # Keep x
+            [0, 1],  # Keep y
+        ],
+    )
+    b = np.array([constant, 0, 0])
+    return affine_transform(xs, A, b)
+
+
 def scale(features: ArrayLike, scale_factor: float) -> NDArray[np.float64]:
     """Scales the input features by the given factor."""
     if scale_factor <= 0:
