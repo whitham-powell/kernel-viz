@@ -52,16 +52,25 @@ def polynomial_features(features: ArrayLike, degree: int = 2) -> NDArray[np.floa
     return transformed
 
 
-def rotate(features: ArrayLike, angle: float) -> NDArray[np.float64]:
+def rotate2D(features: ArrayLike, angle: float) -> NDArray[np.float64]:
     """Rotates 2D input features by the given angle."""
     xs = np.asarray(features, dtype=np.float64)
     if xs.shape[1] != 2:
-        raise ValueError("rotate only supports 2D features.")
-    rotation_matrix = np.array(
-        [[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]],
+        raise ValueError("Only supports 2D features.")
+
+    # Rotation matrix
+    A = np.array(
+        [
+            [np.cos(angle), -np.sin(angle)],
+            [np.sin(angle), np.cos(angle)],
+        ],
         dtype=np.float64,
     )
-    return xs @ rotation_matrix.T
+
+    # No translation for rotation
+    b = np.zeros(2, dtype=np.float64)
+
+    return affine_transform(xs, A, b)
 
 
 def scale(features: ArrayLike, scale_factor: float) -> NDArray[np.float64]:
