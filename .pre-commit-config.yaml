@@ -1,9 +1,5 @@
 # Globals
-exclude: |
-  ^.git/
-  ^.venv/
-  ^dist/
-  '^scratch\.py$'
+exclude: '^(.*/)?scratch\.py$'
 repos:
   # Formatters
   - repo: https://github.com/psf/black
