@@ -77,6 +77,7 @@ def animate_decision_boundary(
         cmap="bwr",
         edgecolor="k",
     )
+
     (line,) = ax.plot([], [], "k-", lw=2) if plot_type == "line" else None  # type: ignore
     contour = None
 
@@ -84,23 +85,23 @@ def animate_decision_boundary(
         nonlocal contour
         alphas = alphas_logs[frame]["values"]
 
+        # For both linear and non-linear cases
+        xx, yy, zz = compute_decision_boundary(
+            xs,
+            alphas,
+            kernel,
+            kernel_params,
+            fixed_dims=fixed_dims,
+        )
+
         if plot_type == "line":
-            # Compute weights and bias for the linear decision boundary
-            w = np.sum(alphas[:, None] * ys[:, None] * xs, axis=0)
-            b = np.mean(ys - np.dot(xs, w))
-            x_min, x_max = xs[:, 0].min() - 1, xs[:, 0].max() + 1
-            y_min = -(w[0] * x_min + b) / w[1]
-            y_max = -(w[0] * x_max + b) / w[1]
-            line.set_data([x_min, x_max], [y_min, y_max])
+            contour = ax.contour(xx, yy, zz, levels=[0], colors="black")
+            path = contour.collections[0].get_paths()
+            if path:
+                line_coords = path[0].vertices
+                line.set_data(line_coords[:, 0], line_coords[:, 1])
+
         elif plot_type == "contour":
-            # Compute and plot the non-linear decision boundary
-            xx, yy, zz = compute_decision_boundary(
-                xs,
-                alphas,
-                kernel,
-                kernel_params,
-                fixed_dims=fixed_dims,
-            )
             if contour:
                 for c in contour.collections:
                     c.remove()
