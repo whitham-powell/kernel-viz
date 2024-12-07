@@ -10,6 +10,7 @@ matplotlib = "*"
 seaborn = "*"
 scikit-learn = "*"
 scipy = "*"
+ffmpeg-python = "*"
 
 [dev-packages]
 ipykernel = "*"
