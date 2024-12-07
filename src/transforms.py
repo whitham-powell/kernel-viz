@@ -43,6 +43,7 @@ def min_max_scale(features: ArrayLike) -> NDArray[np.float64]:
 
 def polynomial_features(features: ArrayLike, degree: int = 2) -> NDArray[np.float64]:
     """Generates polynomial features up to the specified degree."""
+    # TODO: implement without relying on sklearn
     xs = np.asarray(features, dtype=np.float64)
     poly_features = PolynomialFeatures(degree=degree)
     transformed: NDArray[np.float64] = np.asarray(
@@ -95,6 +96,14 @@ def scale(features: ArrayLike, scale_factor: float) -> NDArray[np.float64]:
         raise ValueError("scale_factor must be positive.")
     xs = np.asarray(features, dtype=np.float64)
     return xs * scale_factor
+
+
+def shift(features: ArrayLike, offset: float) -> NDArray[np.float64]:
+    """Shifts the input features by the given factor."""
+    xs = np.asarray(features, dtype=np.float64)
+    translation = np.asarray(offset, dtype=np.float64)
+    A = np.eye(xs.shape[1], dtype=np.float64)
+    return affine_transform(xs, A, translation)
 
 
 def composite_transform(
