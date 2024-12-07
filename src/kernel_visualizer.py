@@ -117,7 +117,7 @@ def create_update_func(
 
     def update(frame: int) -> Union[List[Line2D], List[PathCollection]]:
         nonlocal contour, line
-        alphas = alphas_logs[frame]["values"]
+        alphas = alphas_logs[frame]["alphas"]
 
         # Compute decision boundary
         xx, yy, zz = compute_decision_boundary(
@@ -161,7 +161,7 @@ def animate_decision_boundary(
     logger: PerceptronLogger,
     xs: NDArray[np.float64],
     ys: NDArray[np.float64],
-    plot_type: str,
+    plot_type: Optional[str] = None,
     save_path: Optional[str] = None,
     fps: int = 10,
     fixed_dims: Optional[Dict[int, float]] = None,
@@ -216,6 +216,7 @@ def animate_decision_boundary(
         save_animation(ani, save_path, fps)
 
     plt.show()
+    plt.close()
 
 
 def save_animation(ani: FuncAnimation, save_path: str, fps: int) -> None:
