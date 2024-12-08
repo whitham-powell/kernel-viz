@@ -86,3 +86,48 @@ from src.kernelized_perceptron import PerceptronLogger
 animate_decision_boundary(logger, xs, ys, save_path="kernelized_perceptron.mp4", fps=5)
 
 # %%
+import matplotlib.pyplot as plt
+plt.ion()  # Turn on interactive mode
+
+import numpy as np
+from src.kernelized_perceptron import kernelized_perceptron, PerceptronLogger
+from src.kernels import linear_kernel
+from src.kernel_visualizer import PerceptronVisualizer
+
+# Generate some random 2D data
+# np.random.seed(42)  # for reproducibility
+# n_samples = 20  # try different numbers to see how visualization scales
+
+# # Create two clusters
+# X1 = np.random.randn(n_samples // 2, 2) + np.array([2, 2])
+# X2 = np.random.randn(n_samples // 2, 2) + np.array([-2, -2])
+# xs = np.vstack([X1, X2])
+
+# # Create labels
+# ys = np.array([1] * (n_samples // 2) + [-1] * (n_samples // 2))
+
+np.random.seed(42)
+xs = np.random.randn(20, 2)
+ys = np.sign(xs[:, 0] * xs[:, 1])
+
+# Train perceptron and log
+logger = PerceptronLogger()
+alphas = kernelized_perceptron(
+    xs, 
+    ys, 
+    kernel=linear_kernel,
+    max_iter=10,
+    logger=logger
+)
+
+# Create visualization
+visualizer = PerceptronVisualizer()
+visualizer.add_component(
+    visualizer.create_alpha_evolution_component(logger.get_logs(), debug=True)
+)
+
+# Let's also add some debug prints in the animate call
+print("About to animate...")
+anim = visualizer.animate(logger.get_logs(), save_path="perceptron_alpha_evolution.mp4", fps=5, debug=True)
+plt.show(block=True)  # Make sure the plot stays visible
+# %%

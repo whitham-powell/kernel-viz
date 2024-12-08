@@ -1,11 +1,12 @@
 # kernel_visualizer.py
+import time
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import animation
-from matplotlib.animation import FuncAnimation
+from matplotlib.animation import Animation, FuncAnimation
 from matplotlib.artist import Artist
 from matplotlib.axes import Axes
 from matplotlib.collections import PathCollection
@@ -296,24 +297,50 @@ class PerceptronVisualizer:
     def create_alpha_evolution_component(
         self,
         logs: Dict[str, Any],
+        debug: bool = False,
     ) -> AnimationComponent:
         """Visualizes how alpha values change over training iterations."""
         alphas_history = logs["alphas"]
         n_samples = len(alphas_history[0]["alphas"])
 
+        print(f"Number of samples: {n_samples}")
+        print(f"Number of iterations: {len(alphas_history)}")
+        print(
+            f"Sample alpha values from first iteration: {alphas_history[0]['alphas']}",
+        )
+
         def setup(ax: plt.Axes) -> List[Artist]:
             lines = []
             for i in range(n_samples):
-                (line,) = ax.plot([], [], label=f"Point {i}", alpha=0.7)
+                (line,) = ax.plot(
+                    [],
+                    [],
+                    label=f"Point {i}",
+                    alpha=0.3,
+                    linewidth=0.5,
+                    color="gray",
+                )
                 lines.append(line)
+
+            ax.set_autoscale_on(False)
+
+            # Debug prints
+            print("In setup:")
+            print(f"Y-axis limits: {ax.get_ylim()}")
+            print(f"Created {len(lines)} lines")
 
             ax.set_xlim(0, len(alphas_history))
 
             # Find min/max alpha values
-            all_alphas = [entry["alphas"] for entry in alphas_history]
+            all_alphas = np.array([entry["alphas"] for entry in alphas_history])
             min_alpha = min(np.min(alphas) for alphas in all_alphas)
             max_alpha = max(np.max(alphas) for alphas in all_alphas)
             margin = (max_alpha - min_alpha) * 0.1
+            print(f"all_alphas first few entries: {all_alphas[:2]}")
+            print(f"min_alpha: {min_alpha}")
+            print(f"max_alpha: {max_alpha}")
+            print(f"margin: {margin}")
+            print(f"Setting y limits to: ({min_alpha - margin}, {max_alpha + margin})")
             ax.set_ylim(min_alpha - margin, max_alpha + margin)
 
             ax.set_title("Alpha Values Evolution")
@@ -325,13 +352,23 @@ class PerceptronVisualizer:
             return lines
 
         def update(frame: int, ax: plt.Axes, artists: List[Artist]) -> List[Artist]:
+            print(f"In update frame {frame}:")
             alphas = alphas_history[frame]["alphas"]
 
             # Update lines
             for i, line in enumerate(artists):
                 x_data = range(frame + 1)
                 y_data = [alphas_history[j]["alphas"][i] for j in range(frame + 1)]
+                print(f"Point {i}: x_data={x_data}, y_data={y_data}")
                 line.set_data(x_data, y_data)
+
+                # Color based on current alpha value
+                if abs(alphas[i]) > 1e-10:
+                    line.set_color("red")
+                    line.set_alpha(0.7)  # Make active points more visible
+                else:
+                    line.set_color("gray")
+                    line.set_alpha(0.1)  # Make inactive points very faint
 
             # Calculate stats about non-zero alphas
             n_points = len(alphas)
@@ -461,26 +498,48 @@ class PerceptronVisualizer:
         figsize: Tuple[float, float] = (15, 10),
         save_path: Optional[str] = None,
         fps: int = 10,
-    ) -> None:
+        debug: bool = False,
+    ) -> Animation:
         """Create and display/save the combined animation."""
+        # FIXME: Close any existing figures - added for debugging
+        plt.close("all")  # Close any existing figures - added for debugging
         fig = plt.figure(figsize=figsize)
 
-        # Adjust GridSpec based on number of components
+        # Determine grid layout based on number of components
         n_components = len(self.components)
-        if n_components <= 2:
+        if n_components == 0:
+            raise ValueError("No components added to visualizer")
+        elif n_components == 1:
+            gs = plt.GridSpec(1, 1, figure=fig)
+            self.components[0].subplot_params["gridspec"] = (0, 0)
+        elif n_components == 2:
             gs = plt.GridSpec(1, 2, figure=fig)
+            self.components[0].subplot_params["gridspec"] = (0, 0)
+            self.components[1].subplot_params["gridspec"] = (0, 1)
         else:
             gs = plt.GridSpec(2, 2, figure=fig)
 
-        component_artists = {}
+        # Use a list instead of dict to store component info
+        component_artists = []
         for component in self.components:
             ax = fig.add_subplot(gs[component.subplot_params["gridspec"]])
             artists = component.setup_func(ax)
-            component_artists[component] = (ax, artists)
+            component_artists.append((component, ax, artists))
 
         def update(frame: int) -> List[Artist]:
             all_artists = []
-            for component, (ax, artists) in component_artists.items():
+            if debug:
+                print(f"Next frame requested: {frame}")
+                print(
+                    f"Alpha values at frame {frame}: {logs['alphas'][frame]['alphas']}",
+                )
+
+                print(f"Processing frame {frame}")
+                print(f"\nUpdate called for frame {frame}")
+                print(f"Time: {time.time()}")
+            # FIXME We'll need to access the animation object, so we might need to make it nonlocal
+
+            for component, ax, artists in component_artists:
                 updated_artists = component.update_func(frame, ax, artists)
                 all_artists.extend(updated_artists)
             return all_artists
@@ -491,11 +550,63 @@ class PerceptronVisualizer:
             frames=len(logs["alphas"]),
             repeat=False,
             blit=True,
+            interval=200,
         )
-
+        if debug:
+            print(f"Animation configured with {len(logs['alphas'])} frames")
+            print(f"Animation object: {ani}")  # See if animation is properly configured
         if save_path:
             save_animation(ani, save_path, fps)
 
         plt.tight_layout()
+        # display(fig)
         plt.show()
-        plt.close()
+        # plt.close()
+        return ani
+
+        # FIXME: old code remove before submission
+
+    # def animate(
+    #     self,
+    #     logs: Dict[str, Any],
+    #     figsize: Tuple[float, float] = (15, 10),
+    #     save_path: Optional[str] = None,
+    #     fps: int = 10,
+    # ) -> None:
+    #     """Create and display/save the combined animation."""
+    #     fig = plt.figure(figsize=figsize)
+
+    #     # Adjust GridSpec based on number of components
+    #     n_components = len(self.components)
+    #     if n_components <= 2:
+    #         gs = plt.GridSpec(1, 2, figure=fig)
+    #     else:
+    #         gs = plt.GridSpec(2, 2, figure=fig)
+
+    #     component_artists = {}
+    #     for component in self.components:
+    #         ax = fig.add_subplot(gs[component.subplot_params["gridspec"]])
+    #         artists = component.setup_func(ax)
+    #         component_artists[component] = (ax, artists)
+
+    #     def update(frame: int) -> List[Artist]:
+    #         all_artists = []
+    #         for component, (ax, artists) in component_artists.items():
+    #             updated_artists = component.update_func(frame, ax, artists)
+    #             all_artists.extend(updated_artists)
+    #         return all_artists
+
+    #     ani = FuncAnimation(
+    #         fig,
+    #         update,
+    #         frames=len(logs["alphas"]),
+    #         repeat=False,
+    #         blit=True,
+    #     )
+
+    #     if save_path:
+    #         save_animation(ani, save_path, fps)
+
+    #     plt.tight_layout()
+    #     plt.show()
+    #     plt.close()
