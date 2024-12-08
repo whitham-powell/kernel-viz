@@ -17,11 +17,12 @@ This project implements a framework for visualizing kernels via a kernelized per
   - [ ] 2D decision boundary plotting
 
   - **Visualizations**
-    - [ ] Multiple component animations
-    - [ ] Kernel response component
+    - [ ] Multiple component animations - WIP
+    - [x] Single component animations
+    - [ ] Kernel response component - WIP
     - [ ] Kernel matrix heatmap
-    - [ ] Alpha evolution component
-    - [ ] 2D decision boundary plotting
+    - [ ] Alpha evolution component - Need to test this fully
+    - [x] 2D decision boundary plotting
 
 - **Documentation**
   - [ ] Add usage examples
