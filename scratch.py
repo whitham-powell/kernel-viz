@@ -73,10 +73,10 @@ def linear_kernel(x, y, **kwargs):
 
 # Fit the perceptron
 logger = PerceptronLogger()
-alphas = kernelized_perceptron(xs, ys, affine_kernel, {}, max_iter=10, logger=logger)
+alphas = kernelized_perceptron(xs, ys, linear_kernel, {}, max_iter=10, logger=logger)
 
 # Plot the result
-plot_decision_boundary(xs, ys, alphas, affine_kernel, {})
+plot_decision_boundary(xs, ys, alphas, linear_kernel, {})
 
 # %%
 

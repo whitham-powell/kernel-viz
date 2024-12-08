@@ -183,7 +183,14 @@ class TestPerceptronLogger:
     def test_log_misclassification_count(self):
         logger = PerceptronLogger()
         logger.log_misclassification_count(5)
-        assert logger.get_logs()["misclassification_count"] == [5]
+        assert logger.get_logs()["misclassification_count"] == [
+            5,
+        ], "Expected a single log entry for misclassification count."
+
+    def test_log_misclassification_count_raises_on_non_int(self):
+        logger = PerceptronLogger()
+        with pytest.raises(TypeError):
+            logger.log_misclassification_count(5.0)
 
     def test_log_alphas(self):
         logger = PerceptronLogger()
@@ -201,6 +208,12 @@ class TestPerceptronLogger:
         assert logged_entry["iteration"] == 1, "Iteration mismatch"
         assert np.array_equal(logged_entry["alphas"], alphas), "Alphas mismatch"
 
+    def test_log_alphas_raises_on_non_int(self):
+        logger = PerceptronLogger()
+        alphas = np.array([0.1, 0.2, 0.3], dtype=np.float64)
+        with pytest.raises(TypeError):
+            logger.log_alphas(1.0, alphas)
+
     @pytest.mark.parametrize(
         "kernel_func, kernel_kwargs",
         test_kernels,
@@ -214,11 +227,115 @@ class TestPerceptronLogger:
         assert logger.get_logs()["kernel"] == kernel
         assert logger.get_logs()["kernel_params"] == kernel_params
 
+    def test_log_kernel_raises_on_non_callable_kernel_func(self):
+        logger = PerceptronLogger()
+        with pytest.raises(TypeError):
+            logger.log_kernel(1, {})
+
     def test_log_feature_space(self):
         logger = PerceptronLogger()
         feature_space = np.array([[1, 2], [3, 4]], dtype=np.float64)
         logger.log_feature_space(feature_space)
         assert np.array_equal(logger.get_logs()["feature_space"], feature_space)
+
+    @pytest.mark.parametrize(
+        "kernel_func, kernel_kwargs",
+        test_kernels,
+        ids=generate_id_test_kernels,
+    )
+    def test_log_kernel_matrix(self, kernel_func, kernel_kwargs):
+        logger = PerceptronLogger()
+        test_xs = np.array([[1, 2], [3, 4], [5, 6]], dtype=np.float64)
+
+        logger.log_kernel(kernel_func, kernel_kwargs)
+        logger.log_kernel_matrix(test_xs)
+        logged_kernel_matrix = logger.get_logs()["kernel_matrix"]
+        logged_kernel = logger.get_logs()["kernel"]
+        logged_kernel_params = logger.get_logs()["kernel_params"]
+
+        expected_kernel_matrix = np.array(
+            [
+                [
+                    kernel_func(test_xs[0], test_xs[0], **kernel_kwargs),
+                    kernel_func(test_xs[0], test_xs[1], **kernel_kwargs),
+                    kernel_func(test_xs[0], test_xs[2], **kernel_kwargs),
+                ],
+                [
+                    kernel_func(test_xs[1], test_xs[0], **kernel_kwargs),
+                    kernel_func(test_xs[1], test_xs[1], **kernel_kwargs),
+                    kernel_func(test_xs[1], test_xs[2], **kernel_kwargs),
+                ],
+                [
+                    kernel_func(test_xs[2], test_xs[0], **kernel_kwargs),
+                    kernel_func(test_xs[2], test_xs[1], **kernel_kwargs),
+                    kernel_func(test_xs[2], test_xs[2], **kernel_kwargs),
+                ],
+            ],
+        )
+        assert logged_kernel is kernel_func, "Logged kernel function does not match"
+        assert (
+            logged_kernel_params == kernel_kwargs
+        ), "Logged kernel parameters do not match"
+        assert np.allclose(
+            logged_kernel_matrix,
+            expected_kernel_matrix,
+        ), "Kernel matrix logging failed"
+
+    @pytest.mark.parametrize(
+        "kernel_func, kernel_kwargs",
+        test_kernels,
+        ids=generate_id_test_kernels,
+    )
+    def test_compute_kernel_matrix(self, kernel_func, kernel_kwargs):
+        test_xs = np.array([[1, 2], [3, 4], [5, 6]], dtype=np.float64)
+        logger = PerceptronLogger()
+        logger.log_kernel(kernel_func, kernel_kwargs)
+
+        computed_kernel_matrix = logger.compute_kernel_matrix(test_xs)
+        expected_kernel_matrix = np.array(
+            [
+                [
+                    kernel_func(test_xs[0], test_xs[0], **kernel_kwargs),
+                    kernel_func(test_xs[0], test_xs[1], **kernel_kwargs),
+                    kernel_func(test_xs[0], test_xs[2], **kernel_kwargs),
+                ],
+                [
+                    kernel_func(test_xs[1], test_xs[0], **kernel_kwargs),
+                    kernel_func(test_xs[1], test_xs[1], **kernel_kwargs),
+                    kernel_func(test_xs[1], test_xs[2], **kernel_kwargs),
+                ],
+                [
+                    kernel_func(test_xs[2], test_xs[0], **kernel_kwargs),
+                    kernel_func(test_xs[2], test_xs[1], **kernel_kwargs),
+                    kernel_func(test_xs[2], test_xs[2], **kernel_kwargs),
+                ],
+            ],
+        )
+        # Assert correctness
+        assert np.allclose(
+            computed_kernel_matrix,
+            expected_kernel_matrix,
+        ), "Computed kernel matrix does not match expected kernel matrix"
+
+        # Assert symmetry
+        assert np.allclose(
+            computed_kernel_matrix,
+            computed_kernel_matrix.T,
+        ), "Computed kernel matrix is not symmetric"
+
+    def test_compute_kernel_matrix_no_kernel_set(self):
+        logger = PerceptronLogger()
+        test_xs = np.array([[1, 2], [3, 4]], dtype=np.float64)
+        with pytest.raises(ValueError, match="Kernel function is not set."):
+            logger.compute_kernel_matrix(test_xs)
+
+    def test_compute_kernel_matrix_non_callable_kernel(self):
+        logger = PerceptronLogger()
+
+        logger.logs["kernel"] = "not a function"
+        test_xs = np.array([[1, 2], [3, 4]], dtype=np.float64)
+        with pytest.raises(TypeError, match="kernel_func: .* must be callable"):
+            logger.compute_kernel_matrix(test_xs)
 
     def test_get_logs(self):
         logger = PerceptronLogger()

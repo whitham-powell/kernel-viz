@@ -1,4 +1,4 @@
-# kernalized_perceptron.py
+# kernelized_perceptron.py
 
 from typing import Any, Callable, Dict, Optional, Union
 
@@ -14,27 +14,79 @@ class PerceptronLogger:
             "kernel": None,
             "kernel_params": None,
             "feature_space": None,
+            "kernel_matrix": None,
         }
 
     def log_misclassification_count(self, count: int) -> None:
+        """Log the misclassification count at a given epoch step. Should be logged at each epoch step."""
+        if not isinstance(count, (int, np.integer)):
+            raise TypeError(
+                f"misclassification count must be an integer, got {type(count)}",
+            )
         self.logs["misclassification_count"].append(count)
 
     def log_alphas(self, epoch_step: int, alphas: NDArray[np.float64]) -> None:
+        """Log the alphas at a given epoch step. Should log the alphas at each epoch."""
+        if not isinstance(epoch_step, int):
+            raise TypeError(f"epoch_step must be an integer, got {type(epoch_step)}")
         self.logs["alphas"].append({"iteration": epoch_step, "alphas": alphas.copy()})
 
     def log_kernel(
         self,
-        kernel: Callable[[ArrayLike, ArrayLike], Union[float, ArrayLike]],
+        kernel_func: Callable[[ArrayLike, ArrayLike], Union[float, ArrayLike]],
         kernel_params: Optional[Dict[str, Any]] = None,
     ) -> None:
-        self.logs["kernel"] = kernel
-        self.logs["kernel_params"] = kernel_params
+        """Log the kernel function and its parameters. Kernel function must be a callable."""
+        if not callable(kernel_func):
+            raise TypeError(f"kernel_func must be callable, got {type(kernel_func)}")
+
+        self.logs["kernel"] = kernel_func
+        self.logs["kernel_params"] = kernel_params or {}
 
     def log_feature_space(self, feature_space: NDArray[np.float64]) -> None:
+        """Log the feature space. Should only be logged once per training."""
         self.logs["feature_space"] = feature_space.copy()
 
+    def log_kernel_matrix(self, xs: NDArray[np.float64]) -> None:
+        kernel_matrix = self.compute_kernel_matrix(xs)
+        self.logs["kernel_matrix"] = kernel_matrix
+
+    def compute_kernel_matrix(self, xs: NDArray[np.float64]) -> NDArray[np.float64]:
+        """Compute the kernel matrix for the given feature space."""
+        n_samples = len(xs)
+        kernel_matrix = np.zeros((n_samples, n_samples))
+
+        kernel_func = self.logs.get("kernel")
+        kernel_params = self.logs.get("kernel_params")
+
+        if kernel_func is None:
+            raise ValueError("Kernel function is not set.")
+
+        if not callable(kernel_func):
+            raise TypeError(
+                f"kernel_func: ({kernel_func}) must be callable, got {type(kernel_func)}",
+            )
+
+        for i in range(n_samples):
+            for j in range(i, n_samples):
+                try:
+                    value = kernel_func(xs[i], xs[j], **(kernel_params or {}))
+                    kernel_matrix[i, j] = value
+                    kernel_matrix[j, i] = value
+                except Exception as e:
+                    raise RuntimeError(
+                        f"Error computing kernel matrix for indices (i={i}, j={j}): {e}",
+                    ) from e
+
+        assert np.allclose(
+            kernel_matrix,
+            kernel_matrix.T,
+        ), "Kernel matrix is not symmetric"
+        return kernel_matrix
+
     def get_logs(self) -> Dict[str, Any]:
-        return self.logs
+        """Return a copy of the logs dictionary."""
+        return self.logs.copy()
 
 
 def kernelized_perceptron(
@@ -57,7 +109,7 @@ def kernelized_perceptron(
         logger.log_kernel(kernel, kernel_params)
         logger.log_feature_space(xs)
 
-    for epoc_step in range(max_iter):
+    for epoch_step in range(max_iter):
         misclassified = 0
         for i in range(1, n_samples):
             xi = xs[i]
@@ -73,8 +125,8 @@ def kernelized_perceptron(
                 misclassified += 1
 
         if logger:
-            logger.log_alphas(epoc_step, alphas)
-            print(f"Epoch {epoc_step}: Misclassified {misclassified}")
+            logger.log_alphas(epoch_step, alphas)
+            print(f"Epoch {epoch_step + 1}: Misclassified {misclassified}")
             logger.log_misclassification_count(misclassified)
     return alphas
 
