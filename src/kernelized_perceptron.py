@@ -1,4 +1,4 @@
-# kernalized_perception.py
+# kernalized_perceptron.py
 
 from typing import Any, Callable, Dict, Optional, Union
 
@@ -87,6 +87,9 @@ def predict(
     kernel_params: Optional[Dict[str, Any]] = None,
 ) -> int:
     f_x_new = np.sum(
-        [alphas[i] * kernel(xs[i], x_new, **kernel_params) for i in range(len(xs))],
+        [
+            alphas[i] * kernel(xs[i], x_new, **(kernel_params or {}))
+            for i in range(len(xs))
+        ],
     )
     return 1 if f_x_new > 0 else -1
