@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from src.kernelized_perceptron import kernelized_perceptron, predict
+from src.kernelized_perceptron import PerceptronLogger, kernelized_perceptron, predict
 from src.kernels import (
     affine_kernel,
     exponential_kernel,
@@ -123,7 +123,7 @@ class TestKernelizedPerceptron:
         else:
             # Expect linear kernels to fail
             assert misclassified > 0, (
-                f"Kernel {kernel_name} incorrectly classified XOR data fully. "
+                f"Kernel {kernel_name} incorrectly classified XOR data fully as expected. "
                 f"Got alphas: {alphas}."
             )
 
@@ -134,7 +134,7 @@ class TestKernelizedPerceptron:
     ):
         xs = np.empty((0, 2))
         ys = np.empty(0)
-        alphas = kernelized_perceptron(xs, ys, kernel_func)
+        alphas = kernelized_perceptron(xs, ys, kernel_func, kwargs)
         assert (
             alphas.size == 0
         ), "Expected no alphas to be returned for an empty dataset."
@@ -146,7 +146,7 @@ class TestKernelizedPerceptron:
     ):
         xs = np.array([[1, 1]], dtype=np.float64)
         ys = np.array([1], dtype=np.float64)
-        alphas = kernelized_perceptron(xs, ys, kernel_func)
+        alphas = kernelized_perceptron(xs, ys, kernel_func, kwargs)
         assert (
             alphas.size == 1
         ), "Expected a single alpha to be returned for a single sample."
@@ -176,3 +176,143 @@ class TestKernelizedPerceptron:
         assert (
             len_alphas == len_xs
         ), f"Alpha vector length must equal the number of training samples. Got {len_alphas} alphas for {len_xs} samples."
+
+
+class TestPerceptronLogger:
+
+    def test_log_misclassification_count(self):
+        logger = PerceptronLogger()
+        logger.log_misclassification_count(5)
+        assert logger.get_logs()["misclassification_count"] == [5]
+
+    def test_log_alphas(self):
+        logger = PerceptronLogger()
+        alphas = np.array([0.1, 0.2, 0.3], dtype=np.float64)
+        logger.log_alphas(1, alphas)
+
+        logs = logger.get_logs()
+        assert len(logs["alphas"]) == 1
+        logged_entry = logs["alphas"][0]
+
+        # Check the structure and values
+        assert isinstance(logged_entry, dict)
+        assert "iteration" in logged_entry
+        assert "alphas" in logged_entry
+        assert logged_entry["iteration"] == 1, "Iteration mismatch"
+        assert np.array_equal(logged_entry["alphas"], alphas), "Alphas mismatch"
+
+    @pytest.mark.parametrize(
+        "kernel_func, kernel_kwargs",
+        test_kernels,
+        ids=generate_id_test_kernels,
+    )
+    def test_log_kernel(self, kernel_func, kernel_kwargs):
+        logger = PerceptronLogger()
+        kernel = kernel_func
+        kernel_params = kernel_kwargs
+        logger.log_kernel(kernel, kernel_params)
+        assert logger.get_logs()["kernel"] == kernel
+        assert logger.get_logs()["kernel_params"] == kernel_params
+
+    def test_log_feature_space(self):
+        logger = PerceptronLogger()
+        feature_space = np.array([[1, 2], [3, 4]], dtype=np.float64)
+        logger.log_feature_space(feature_space)
+        assert np.array_equal(logger.get_logs()["feature_space"], feature_space)
+
+    def test_get_logs(self):
+        logger = PerceptronLogger()
+        logs = logger.get_logs()
+        assert isinstance(logs, dict)
+        assert "misclassification_count" in logs
+        assert "alphas" in logs
+        assert "kernel" in logs
+        assert "kernel_params" in logs
+        assert "feature_space" in logs
+
+
+@pytest.mark.parametrize(
+    "kernel_func, kernel_kwargs",
+    test_kernels,
+    ids=generate_id_test_kernels,
+)
+class TestKernelizedPerceptronIntegration:
+    def test_kernelized_perceptron_logging(
+        self,
+        kernel_func,
+        kernel_kwargs,
+    ):
+        # Setup test data
+        xs = np.array([[1, 1], [-1, -1], [1, -1], [-1, 1]], dtype=np.float64)
+        ys = np.array([1, -1, -1, 1], dtype=np.float64)
+        test_max_iterations = 2
+        logger = PerceptronLogger()
+        _ = kernelized_perceptron(
+            xs,
+            ys,
+            kernel_func,
+            kernel_kwargs,
+            max_iter=test_max_iterations,
+            logger=logger,
+        )
+
+        logs = logger.get_logs()
+
+        assert len(logs["misclassification_count"]) > 0
+        expected_alphas_log_len = len(logs["alphas"])
+        assert (
+            expected_alphas_log_len == test_max_iterations
+        ), f"Expected {test_max_iterations} alphas, got {expected_alphas_log_len}"
+        assert (
+            logs["kernel"] is not None
+        ), f"Kernel function not logged for {kernel_func}"
+        assert (
+            logs["feature_space"] is not None
+        ), f"Feature space not logged for {kernel_func}"
+        assert logs["alphas"][0]["alphas"].shape[0] == len(xs), "Alphas shape mismatch"
+        assert logs["feature_space"].shape == xs.shape, "Feature space shape mismatch"
+
+    def test_kernelized_perceptron_logging_with_different_kernels(
+        self,
+        kernel_func,
+        kernel_kwargs,
+    ):
+        xs = np.array([[1, 1], [-1, -1]], dtype=np.float64)
+        ys = np.array([1, -1], dtype=np.float64)
+        logger = PerceptronLogger()
+        test_max_iterations = 2
+        _ = kernelized_perceptron(
+            xs,
+            ys,
+            kernel_func,
+            kernel_kwargs,
+            max_iter=test_max_iterations,
+            logger=logger,
+        )
+
+        logs = logger.get_logs()
+
+        assert logs["kernel"] == kernel_func, "Kernel function mismatch"
+        assert logs["kernel_params"] == kernel_kwargs, "Kernel parameters mismatch"
+
+    def test_kernelized_perceptron_logging_iterations(self, kernel_func, kernel_kwargs):
+        xs = np.array([[1, 1], [-1, -1]], dtype=np.float64)
+        ys = np.array([1, -1], dtype=np.float64)
+        logger = PerceptronLogger()
+        test_max_iterations = 4
+        _ = kernelized_perceptron(
+            xs,
+            ys,
+            kernel_func,
+            kernel_kwargs,
+            max_iter=test_max_iterations,
+            logger=logger,
+        )
+
+        logs = logger.get_logs()
+
+        assert len(logs["misclassification_count"]) <= test_max_iterations
+        assert len(logs["alphas"]) <= test_max_iterations
+
+        iterations = [alpha_dict["iteration"] for alpha_dict in logs["alphas"]]
+        assert iterations == list(range(len(iterations)))
