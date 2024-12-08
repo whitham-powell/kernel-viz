@@ -236,6 +236,7 @@ def save_animation(ani: FuncAnimation, save_path: str, fps: int) -> None:
         )
 
 
+# TODO: refactor AnimationComponent class to PerceptronVisualizer file
 @dataclass
 class AnimationComponent:
     """Represents a single visualization component."""
@@ -245,6 +246,7 @@ class AnimationComponent:
     subplot_params: Dict[str, Any]
 
 
+# TODO: refactor PerceptronVisualizer class to PerceptronVisualizer file
 class PerceptronVisualizer:
     def __init__(self) -> None:
         self.components: List[AnimationComponent] = []
@@ -323,10 +325,25 @@ class PerceptronVisualizer:
             return lines
 
         def update(frame: int, ax: plt.Axes, artists: List[Artist]) -> List[Artist]:
+            alphas = alphas_history[frame]["alphas"]
+
+            # Update lines
             for i, line in enumerate(artists):
                 x_data = range(frame + 1)
                 y_data = [alphas_history[j]["alphas"][i] for j in range(frame + 1)]
                 line.set_data(x_data, y_data)
+
+            # Calculate stats about non-zero alphas
+            n_points = len(alphas)
+            active_points = np.abs(alphas) > 1e-10
+            n_active = np.sum(active_points)
+            active_percentage = (n_active / n_points) * 100
+
+            ax.set_title(
+                f"Alpha Values Evolution - Iteration {frame}\n"
+                f"Active points: {n_active}/{n_points} ({active_percentage:.1f}%)",
+            )
+
             return artists
 
         return AnimationComponent(

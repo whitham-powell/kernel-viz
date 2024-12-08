@@ -78,6 +78,7 @@ class PerceptronLogger:
                         f"Error computing kernel matrix for indices (i={i}, j={j}): {e}",
                     ) from e
 
+        # TODO: This should probably be an exception or warning instead. In the context of RKHS this is required to be true.
         assert np.allclose(
             kernel_matrix,
             kernel_matrix.T,
