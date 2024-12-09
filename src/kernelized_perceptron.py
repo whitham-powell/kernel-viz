@@ -14,6 +14,7 @@ class PerceptronLogger:
             "kernel": None,
             "kernel_params": None,
             "feature_space": None,
+            "true_labels": None,
             "kernel_matrix": None,
         }
 
@@ -46,6 +47,10 @@ class PerceptronLogger:
     def log_feature_space(self, feature_space: NDArray[np.float64]) -> None:
         """Log the feature space. Should only be logged once per training."""
         self.logs["feature_space"] = feature_space.copy()
+
+    def log_true_labels(self, labels: NDArray[np.float64]) -> None:
+        """Log the true labels. Should only be logged once per training."""
+        self.logs["true_labels"] = labels.copy()
 
     def log_kernel_matrix(self, xs: NDArray[np.float64]) -> None:
         kernel_matrix = self.compute_kernel_matrix(xs)
@@ -109,6 +114,7 @@ def kernelized_perceptron(
     if logger:
         logger.log_kernel(kernel, kernel_params)
         logger.log_feature_space(xs)
+        logger.log_true_labels(ys)
 
     for epoch_step in range(max_iter):
         misclassified = 0

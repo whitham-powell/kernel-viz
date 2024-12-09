@@ -130,4 +130,67 @@ visualizer.add_component(
 print("About to animate...")
 anim = visualizer.animate(logger.get_logs(), save_path="perceptron_alpha_evolution.mp4", fps=5, debug=True)
 plt.show(block=True)  # Make sure the plot stays visible
+
+# %%
+
+import numpy as np
+import matplotlib.pyplot as plt
+from src.kernelized_perceptron import PerceptronLogger, kernelized_perceptron
+from src.kernel_visualizer import PerceptronVisualizer
+from src.kernels import linear_kernel
+
+# Generate sample data
+np.random.seed(42)
+n_samples = 20
+xs = np.random.randn(n_samples, 2)
+ys = np.sign(xs[:, 0] * xs[:, 1])
+
+# Train perceptron and log
+logger = PerceptronLogger()
+alphas = kernelized_perceptron(
+    xs,
+    ys,
+    kernel=linear_kernel,
+    max_iter=10,
+    logger=logger
+)
+
+# Create visualization
+visualizer = PerceptronVisualizer()
+decision_boundary_component = visualizer.create_decision_boundary_component(logger.get_logs())
+visualizer.add_component(decision_boundary_component)
+
+# Test the setup and update functions
+fig, ax = plt.subplots(figsize=(8, 6))
+artists = decision_boundary_component.setup_func(ax)
+updated_artists = decision_boundary_component.update_func(0, ax, artists)
+assert len(updated_artists) == len(artists)
+
+# Animate and save
+print("About to animate decision boundary...")
+anim = visualizer.animate(logger.get_logs(), save_path="perceptron_decision_boundary.mp4", fps=5, debug=True)
+assert anim is not None
+assert os.path.exists("perceptron_decision_boundary.mp4")
+
+print("Test passed!")
+# %%
+
+# Create visualization
+visualizer = PerceptronVisualizer()
+alpha_evolution_component = visualizer.create_alpha_evolution_component(logger.get_logs())
+visualizer.add_component(alpha_evolution_component)
+
+# Test the setup and update functions
+fig, ax = plt.subplots(figsize=(8, 6))
+artists = alpha_evolution_component.setup_func(ax)
+updated_artists = alpha_evolution_component.update_func(0, ax, artists)
+assert len(updated_artists) == len(artists)
+
+# Animate and save
+print("About to animate alpha evolution...")
+anim = visualizer.animate(logger.get_logs(), save_path="perceptron_alpha_evolution.mp4", fps=5, debug=True)
+assert anim is not None
+assert os.path.exists("perceptron_alpha_evolution.mp4")
+
+print("Test passed!")
 # %%

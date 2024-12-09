@@ -346,6 +346,34 @@ class TestPerceptronLogger:
         assert "kernel" in logs
         assert "kernel_params" in logs
         assert "feature_space" in logs
+        assert "true_labels" in logs
+        assert "kernel_matrix" in logs
+
+    def test_log_true_labels(self):
+        logger = PerceptronLogger()
+        true_labels = np.array([1, 1, -1], dtype=np.float64)
+        logger.log_true_labels(true_labels)
+        assert np.array_equal(logger.get_logs()["true_labels"], true_labels)
+
+    def test_len_log_keys(self):
+        logger = PerceptronLogger()
+        expected_keys = [
+            "misclassification_count",
+            "alphas",
+            "kernel",
+            "kernel_params",
+            "feature_space",
+            "true_labels",
+            "kernel_matrix",
+        ]
+        expected_len = len(expected_keys)
+        result_len = len(logger.get_logs())
+        assert (
+            result_len == expected_len
+        ), f"Expected {expected_len} keys in the logs dict. Got {result_len}."
+        assert set(logger.get_logs().keys()) == set(
+            expected_keys,
+        ), "Unexpected keys in the logs dict."
 
 
 @pytest.mark.parametrize(
@@ -388,6 +416,7 @@ class TestKernelizedPerceptronIntegration:
         ), f"Feature space not logged for {kernel_func}"
         assert logs["alphas"][0]["alphas"].shape[0] == len(xs), "Alphas shape mismatch"
         assert logs["feature_space"].shape == xs.shape, "Feature space shape mismatch"
+        assert logs["true_labels"].shape == ys.shape, "True labels shape mismatch"
 
     def test_kernelized_perceptron_logging_with_different_kernels(
         self,

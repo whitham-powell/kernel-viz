@@ -251,33 +251,259 @@ class AnimationComponent:
 class PerceptronVisualizer:
     def __init__(self) -> None:
         self.components: List[AnimationComponent] = []
+        self.debug_mode = False
+        self._animation: Optional[Animation] = None
+        self.total_frames: Optional[int] = None
+
+    def set_debug_mode(self, enabled: bool = True) -> None:
+        """Enable or disable debug mode."""
+        self.debug_mode = enabled
 
     def add_component(self, component: AnimationComponent) -> None:
         self.components.append(component)
 
+    def _setup_grid(self, fig: plt.Figure, n_components: int) -> plt.GridSpec:
+        """Setup the grid layout based on number of components."""
+        if self.debug_mode:
+            print(f"Setting up grid with {n_components} components")
+
+        if n_components == 1:
+            return plt.GridSpec(1, 1, figure=fig)
+        if n_components <= 2:
+            return plt.GridSpec(1, 2, figure=fig)
+        else:
+            return plt.GridSpec(2, 2, figure=fig)
+
+    def _save_animation(self, save_path: str, fps: int) -> None:
+        """Save animation with error handling."""
+        if self._animation is None:
+            raise ValueError("No animation to save")
+
+        try:
+            file_extension = save_path.split(".")[-1].lower()
+            if file_extension in ["mp4", "mov"]:
+                writer = "ffmpeg"
+            elif file_extension == "gif":
+                writer = "pillow"
+            else:
+                raise ValueError(f"Unsupported file extension: {file_extension}")
+
+            self._animation.save(save_path, writer=writer, fps=fps)
+
+        except Exception as e:
+            print(f"Error saving animation: {e}")
+            raise
+
+    def animate(  # noqa : C901
+        self,
+        logs: Dict[str, Any],
+        figsize: Tuple[float, float] = (15, 10),
+        save_path: Optional[str] = None,
+        fps: int = 10,
+        debug: bool = False,
+    ) -> Animation:
+        """Create and display/save the combined animation."""
+        self.set_debug_mode(debug)
+        self.total_frames = len(logs["misclassification_count"])
+
+        # TODO add error handling for missing logs / use if raise
+        assert (
+            self.total_frames is not None and self.total_frames > 0
+        ), f"Animation requires valid number of frames. self.total_frames={self.total_frames}"
+
+        if self.debug_mode:
+            print("Debug mode enabled")
+            print(f"Starting animation with {self.total_frames} frames")
+
+        # FIXME: Close any existing figures - added for debugging
+        plt.close("all")  # Close any existing figures - added for debugging
+        fig = plt.figure(figsize=figsize)
+
+        # Determine grid layout based on number of components
+        n_components = len(self.components)
+        if n_components == 0:
+            raise ValueError("No components added to visualizer")
+
+        gs = self._setup_grid(fig, n_components)
+
+        # FIXME remove before submission
+        # elif n_components == 1:
+        #     gs = plt.GridSpec(1, 1, figure=fig)
+        #     self.components[0].subplot_params["gridspec"] = (0, 0)
+        # elif n_components == 2:
+        #     gs = plt.GridSpec(1, 2, figure=fig)
+        #     self.components[0].subplot_params["gridspec"] = (0, 0)
+        #     self.components[1].subplot_params["gridspec"] = (0, 1)
+        # else:
+        #     gs = plt.GridSpec(2, 2, figure=fig)
+
+        # Initialize components
+        component_artists = []
+        for idx, component in enumerate(self.components):
+            if self.debug_mode:
+                print(f"Setting up component {idx}")
+
+            ax = fig.add_subplot(gs[component.subplot_params["gridspec"]])
+            try:
+                artists = component.setup_func(ax)
+                if self.debug_mode:
+                    print(
+                        f"Component {idx} setup completed with {len(artists)} artists",
+                    )
+                component_artists.append((component, ax, artists))
+
+            except Exception as e:
+                print(f"Error setting up component {idx}: {e}")
+                raise
+
+        def update(frame: int) -> List[Artist]:
+            if self.debug_mode:
+                start_time = time.time()
+                assert (
+                    self.total_frames is not None
+                ), "self.total_frames is None in animate() -> update()"
+                print(f"\nProcessing frame {frame} / {self.total_frames - 1}")
+
+            all_artists = []
+
+            for idx, (component, ax, artists) in enumerate(component_artists):
+                try:
+                    if self.debug_mode:
+                        print(f"Updating component {idx}")
+                    updated_artists = component.update_func(frame, ax, artists)
+                    if not isinstance(updated_artists, list):
+                        print(
+                            f"Warning: Component {idx} returned non-list: type={type(updated_artists)}",
+                        )
+                        updated_artists = list(updated_artists)
+
+                    all_artists.extend(updated_artists)
+                except Exception as e:
+                    print(f"Error updating component {idx} at frame {frame}: {e}")
+                    raise
+
+            # FIXME We'll need to access the animation object, so we might need to make it nonlocal
+            # FIXME remove before submission
+            # for component, ax, artists in component_artists:
+            #     updated_artists = component.update_func(frame, ax, artists)
+            #     all_artists.extend(updated_artists)
+
+            if self.debug_mode:
+                print(f"Frame {frame} completed in {time.time() - start_time:.3f}s")
+                print(f"Returned {len(all_artists)} artists")
+
+            # FIXME remove before submission
+            # if debug:
+            #     print(f"Next frame requested: {frame}")
+            #     print(
+            #         f"Alpha values at frame {frame}: {logs['alphas'][frame]['alphas']}",
+            #     )
+
+            #     print(f"Processing frame {frame}")
+            #     print(f"\nUpdate called for frame {frame}")
+            #     print(f"Time: {time.time()}")
+
+            return all_artists
+
+        # TODO should this be a class attribute?
+        interval = 1000 / fps
+
+        self._animation = FuncAnimation(
+            fig,
+            update,
+            frames=self.total_frames,
+            interval=interval,
+            repeat=False,
+            blit=True,
+        )
+
+        if save_path:
+            if self.debug_mode:
+                print(f"Saving animation to {save_path}")
+            self._save_animation(save_path, fps)
+        # ani = FuncAnimation(
+        #     fig,
+        #     update,
+        #     frames=len(logs["alphas"]),
+        #     repeat=False,
+        #     blit=True,
+        #     interval=200,
+        # )
+        # if debug:
+        #     print(f"Animation configured with {len(logs['alphas'])} frames")
+        #     print(f"Animation object: {ani}")  # See if animation is properly configured
+        # if save_path:
+        # save_animation(ani, save_path, fps)
+
+        plt.tight_layout()
+        if self.debug_mode:
+            print(
+                f"Animation configured with {self.total_frames} and ready for display",
+            )
+
+        return self._animation
+
+        # # display(fig)
+        # plt.show()
+        # # plt.close()
+        # return ani
+
+    # Component creation methods
     def create_decision_boundary_component(
         self,
         logs: Dict[str, Any],
+        plot_type: Optional[str] = None,
+        fixed_dims: Optional[Dict[int, float]] = None,
     ) -> AnimationComponent:
         """Creates decision boundary visualization component."""
         xs = logs["feature_space"]
-        ys = np.sign(logs["alphas"][0]["alphas"])  # Use signs of alphas for labels
+        ys = logs["true_labels"]
         kernel = logs["kernel"]
         kernel_params = logs["kernel_params"] or {}
 
-        def setup(ax: plt.Axes) -> List[Artist]:
-            scatter = ax.scatter(xs[:, 0], xs[:, 1], c=ys, cmap="bwr", edgecolor="k")
-            ax.set_title("Decision Boundary")
-            return [scatter]
+        # Determine plot type based on kernel if not specified
+        if plot_type is None:
+            plot_type = (
+                "line"
+                if kernel.__name__ == ("linear_kernel" or "affine_kernel")
+                else "contour"
+            )
 
-        def update(frame: int, ax: plt.Axes, artists: List[Artist]) -> List[Artist]:
-            alphas = logs["alphas"][frame]["alphas"]
-            xx, yy, zz = compute_decision_boundary(xs, alphas, kernel, kernel_params)
-
-            # Clear previous contours
-            for artist in ax.collections[1:]:
+        def clear_old_contours(ax: plt.Axes) -> None:
+            """Remove all contour collections from previous frame."""
+            for artist in ax.collections[1:]:  # Keep scatter plot
                 artist.remove()
 
+        def update_line_plot(
+            ax: plt.Axes,
+            artists: List[Artist],
+            xx: ArrayLike,
+            yy: ArrayLike,
+            zz: ArrayLike,
+        ) -> List[Artist]:
+            """Update the line plot showing decision boundary."""
+            scatter, line = artists
+            temp_contour = ax.contour(xx, yy, zz, levels=[0], colors="black")
+
+            if temp_contour.collections[0].get_paths():
+                vertices = temp_contour.collections[0].get_paths()[0].vertices
+                line.set_data(vertices[:, 0], vertices[:, 1])
+
+            for coll in temp_contour.collections:
+                coll.remove()
+
+            return [scatter, line]
+
+        def update_contour_plot(
+            ax: plt.Axes,
+            artists: List[Artist],
+            xx: ArrayLike,
+            yy: ArrayLike,
+            zz: ArrayLike,
+            frame: int,
+        ) -> List[Artist]:
+            """Update the filled contour plot showing decision regions."""
+            scatter = artists[0]
             contour = ax.contourf(
                 xx,
                 yy,
@@ -286,7 +512,58 @@ class PerceptronVisualizer:
                 alpha=0.3,
                 cmap="coolwarm",
             )
-            return artists + list(contour.collections)
+            ax.set_title(f"Iteration {frame + 1}")
+            return [scatter] + list(contour.collections)
+
+        def setup(ax: plt.Axes) -> List[Artist]:
+            # Setup scatter plot
+            scatter = ax.scatter(
+                xs[:, 0],
+                xs[:, 1],
+                c=ys,
+                cmap="bwr",
+                edgecolor="k",
+                zorder=2,
+            )
+
+            # Set margins
+            margin = 0.1
+            x_min, x_max = xs[:, 0].min(), xs[:, 0].max()
+            y_min, y_max = xs[:, 1].min(), xs[:, 1].max()
+            ax.set_xlim(
+                [x_min - margin * (x_max - x_min), x_max + margin * (x_max - x_min)],
+            )
+            ax.set_ylim(
+                [y_min - margin * (y_max - y_min), y_max + margin * (y_max - y_min)],
+            )
+
+            ax.set_title("Decision Boundary")
+
+            # Initialize line if using line plot
+            if plot_type == "line":
+                line = ax.plot([], [], "k-", lw=2)[0]
+                return [scatter, line]
+            return [scatter]
+
+        def update(frame: int, ax: plt.Axes, artists: List[Artist]) -> List[Artist]:
+            """Update the visualization for the current frame."""
+            # Clear any existing contours
+            clear_old_contours(ax)
+
+            # Compute new boundary
+            alphas = logs["alphas"][frame]["alphas"]
+            xx, yy, zz = compute_decision_boundary(
+                xs,
+                alphas,
+                kernel,
+                kernel_params,
+                fixed_dims,
+            )
+
+            if plot_type == "line":
+                return update_line_plot(ax, artists, xx, yy, zz)
+            else:
+                return update_contour_plot(ax, artists, xx, yy, zz, frame)
 
         return AnimationComponent(
             setup_func=setup,
@@ -437,6 +714,7 @@ class PerceptronVisualizer:
                 if abs(alphas[i]) > 1e-10:
                     for i in range(xx.shape[0]):
                         for j in range(xx.shape[1]):
+
                             grid_point = np.array([xx[i, j], yy[i, j]])
                             response[i, j] += alphas[i] * kernel(
                                 xs[i],
@@ -491,78 +769,6 @@ class PerceptronVisualizer:
             update_func=update,
             subplot_params={"gridspec": (1, 1)},
         )
-
-    def animate(
-        self,
-        logs: Dict[str, Any],
-        figsize: Tuple[float, float] = (15, 10),
-        save_path: Optional[str] = None,
-        fps: int = 10,
-        debug: bool = False,
-    ) -> Animation:
-        """Create and display/save the combined animation."""
-        # FIXME: Close any existing figures - added for debugging
-        plt.close("all")  # Close any existing figures - added for debugging
-        fig = plt.figure(figsize=figsize)
-
-        # Determine grid layout based on number of components
-        n_components = len(self.components)
-        if n_components == 0:
-            raise ValueError("No components added to visualizer")
-        elif n_components == 1:
-            gs = plt.GridSpec(1, 1, figure=fig)
-            self.components[0].subplot_params["gridspec"] = (0, 0)
-        elif n_components == 2:
-            gs = plt.GridSpec(1, 2, figure=fig)
-            self.components[0].subplot_params["gridspec"] = (0, 0)
-            self.components[1].subplot_params["gridspec"] = (0, 1)
-        else:
-            gs = plt.GridSpec(2, 2, figure=fig)
-
-        # Use a list instead of dict to store component info
-        component_artists = []
-        for component in self.components:
-            ax = fig.add_subplot(gs[component.subplot_params["gridspec"]])
-            artists = component.setup_func(ax)
-            component_artists.append((component, ax, artists))
-
-        def update(frame: int) -> List[Artist]:
-            all_artists = []
-            if debug:
-                print(f"Next frame requested: {frame}")
-                print(
-                    f"Alpha values at frame {frame}: {logs['alphas'][frame]['alphas']}",
-                )
-
-                print(f"Processing frame {frame}")
-                print(f"\nUpdate called for frame {frame}")
-                print(f"Time: {time.time()}")
-            # FIXME We'll need to access the animation object, so we might need to make it nonlocal
-
-            for component, ax, artists in component_artists:
-                updated_artists = component.update_func(frame, ax, artists)
-                all_artists.extend(updated_artists)
-            return all_artists
-
-        ani = FuncAnimation(
-            fig,
-            update,
-            frames=len(logs["alphas"]),
-            repeat=False,
-            blit=True,
-            interval=200,
-        )
-        if debug:
-            print(f"Animation configured with {len(logs['alphas'])} frames")
-            print(f"Animation object: {ani}")  # See if animation is properly configured
-        if save_path:
-            save_animation(ani, save_path, fps)
-
-        plt.tight_layout()
-        # display(fig)
-        plt.show()
-        # plt.close()
-        return ani
 
         # FIXME: old code remove before submission
 
