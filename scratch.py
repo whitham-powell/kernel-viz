@@ -291,8 +291,8 @@ misclassification_tracker = visualizer.create_misclassification_tracker_componen
 misclassification_tracker.name = "Misclassification Tracker"  # Add name
 
 # Add components in desired order
-# visualizer.add_component(decision_boundary)
 visualizer.add_component(alpha_evolution)
+visualizer.add_component(decision_boundary)
 visualizer.add_component(kernel_response)
 # visualizer.add_component(misclassification_tracker)
 

@@ -356,6 +356,8 @@ class PerceptronVisualizer:
             self.total_frames is not None and self.total_frames > 0
         ), f"Animation requires valid number of frames. self.total_frames={self.total_frames}"
 
+        print(f"Starting animation with {self.total_frames} frames")
+
         plt.close("all")  # Close any existing figures
         self.figure = plt.figure(figsize=figsize)
         rows, cols = self._calculate_grid_dimensions()
@@ -368,7 +370,6 @@ class PerceptronVisualizer:
 
         if self.debug_mode:
             print("Debug mode enabled")
-            print(f"Starting animation with {self.total_frames} frames")
             print(f"Created {rows}x{cols} grid for {len(self.components)} components")
 
         # Initialize components
@@ -388,8 +389,9 @@ class PerceptronVisualizer:
                 raise
 
         def update(frame: int) -> List[Artist]:
+            update_frame_time = time.time()
+
             if self.debug_mode:
-                update_frame_time = time.time()
                 assert (
                     self.total_frames is not None
                 ), "self.total_frames is None in animate() -> update()"
@@ -413,10 +415,9 @@ class PerceptronVisualizer:
                     )
                     raise
 
-            if self.debug_mode:
-                print(
-                    f"Frame {frame} completed in {time.time() - update_frame_time:.3f}s",
-                )
+            print(
+                f"Frame {frame} completed in {time.time() - update_frame_time:.3f}s",
+            )
 
             return all_artists
 
@@ -536,6 +537,10 @@ class PerceptronVisualizer:
             )
 
             ax.set_title("Decision Boundary")
+
+            # Set axes
+            ax.set_xlabel("Feature 1")
+            ax.set_ylabel("Feature 2")
 
             # Initialize line if using line plot
             if plot_type == "line":
@@ -695,7 +700,7 @@ class PerceptronVisualizer:
             active_percentage = (n_active / n_samples) * 100
 
             ax.set_title(
-                f"Alpha Values Evolution - Iteration {frame}\n"
+                f"Alpha Values Evolution - Iteration {frame + 1}\n"
                 f"Active points: {n_active}/{n_samples} ({active_percentage:.1f}%)",
             )
 
@@ -931,7 +936,7 @@ class PerceptronVisualizer:
                 ],
             )
 
-            ax.set_title(f"Kernel Response Surface - Iteration {frame}")
+            ax.set_title(f"Kernel Response Surface - Iteration {frame + 1}")
 
             if self.debug_mode:
                 print(f"Frame {frame}: Active support vectors = {len(active_indices)}")
