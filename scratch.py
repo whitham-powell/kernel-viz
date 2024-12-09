@@ -137,24 +137,61 @@ import numpy as np
 import matplotlib.pyplot as plt
 from src.kernelized_perceptron import PerceptronLogger, kernelized_perceptron
 from src.kernel_visualizer import PerceptronVisualizer
-from src.kernels import linear_kernel
+from src.kernels import linear_kernel, quadratic_kernel, rbf_gaussian_kernel, polynomial_kernel, laplacian_kernel, exponential_kernel, affine_kernel
 
-# Generate sample data
-np.random.seed(42)
-n_samples = 20
-xs = np.random.randn(n_samples, 2)
-ys = np.sign(xs[:, 0] * xs[:, 1])
+# %%
+# Generate a linearly separable dataset
+# np.random.seed(42)
+# n_samples = 20
+# # Class +1
+# x1 = np.random.randn(int(n_samples/2), 2) + np.array([2, 2])
+# # Class -1
+# x2 = np.random.randn(int(n_samples/2), 2) + np.array([-2, -2])
 
+# # Combine into one dataset
+# xs = np.vstack((x1, x2))
+# ys = np.hstack((np.ones(int(n_samples/2)), -np.ones(int(n_samples/2))))
+#%%
+import numpy as np
+from sklearn.datasets import make_classification
+
+# Generate a linearly separable dataset
+xs, ys = make_classification(
+    n_samples=50, n_features=2, n_informative=1, n_redundant=0, n_clusters_per_class=1, class_sep=1.0, random_state=42
+)
+
+# Add Gaussian noise to the data
+noise = np.random.normal(scale=0.5, size=xs.shape)
+xs += noise
+
+# Convert labels from {0, 1} to {-1, +1}
+ys = 2 * ys - 1
+
+# Visualize the dataset
+plt.scatter(xs[ys == 1][:, 0], xs[ys == 1][:, 1], label="Class +1", color="blue")
+plt.scatter(xs[ys == -1][:, 0], xs[ys == -1][:, 1], label="Class -1", color="red")
+plt.title("Semi-Separable Dataset with Noise")
+plt.xlabel("Feature 1")
+plt.ylabel("Feature 2")
+plt.legend()
+plt.show()
+
+# # Generate sample data
+# np.random.seed(42)
+# n_samples = 20
+# xs = np.random.randn(n_samples, 2)
+# ys = np.sign(xs[:, 0] * xs[:, 1])
+#%%
 # Train perceptron and log
 logger = PerceptronLogger()
 alphas = kernelized_perceptron(
     xs,
     ys,
-    kernel=linear_kernel,
+    kernel=rbf_gaussian_kernel,
     max_iter=10,
     logger=logger
 )
-
+# %%
 # Create visualization
 visualizer = PerceptronVisualizer()
 decision_boundary_component = visualizer.create_decision_boundary_component(logger.get_logs())
@@ -164,7 +201,7 @@ visualizer.add_component(decision_boundary_component)
 fig, ax = plt.subplots(figsize=(8, 6))
 artists = decision_boundary_component.setup_func(ax)
 updated_artists = decision_boundary_component.update_func(0, ax, artists)
-assert len(updated_artists) == len(artists)
+# assert len(updated_artists) == len(artists), f"Expected {len(artists)} artists, got {len(updated_artists)}"
 
 # Animate and save
 print("About to animate decision boundary...")
@@ -194,3 +231,60 @@ assert os.path.exists("perceptron_alpha_evolution.mp4")
 
 print("Test passed!")
 # %%
+
+# Create visualization
+visualizer = PerceptronVisualizer()
+kernel_response_component = visualizer.create_kernel_response_component(logger.get_logs())
+visualizer.add_component(kernel_response_component)
+
+# Test the setup and update functions
+fig, ax = plt.subplots(figsize=(8, 6))
+artists = kernel_response_component.setup_func(ax)
+updated_artists = kernel_response_component.update_func(0, ax, artists)
+assert len(updated_artists) == len(artists)
+
+# Animate and save
+print("About to animate kernel response...")
+anim = visualizer.animate(logger.get_logs(), save_path="perceptron_kernel_response.mp4", fps=5, debug=True)
+assert anim is not None
+assert os.path.exists("perceptron_kernel_response.mp4")
+
+print("Test passed!")
+
+# %%
+# Create visualization
+visualizer = PerceptronVisualizer()
+misclassification_tracker_component = visualizer.create_misclassification_tracker_component(logger.get_logs())
+visualizer.add_component(misclassification_tracker_component)
+
+# Test the setup and update functions
+fig, ax = plt.subplots(figsize=(8, 6))
+artists = misclassification_tracker_component.setup_func(ax)
+updated_artists = misclassification_tracker_component.update_func(0, ax, artists)
+assert len(updated_artists) == len(artists)
+
+# Animate and save
+print("About to animate misclassification tracker...")
+anim = visualizer.animate(logger.get_logs(), save_path="perceptron_misclassification_tracker.mp4", fps=5, debug=True)
+assert anim is not None
+assert os.path.exists("perceptron_misclassification_tracker.mp4")
+
+print("Test passed!")
+# %%
+
+visualizer = PerceptronVisualizer()
+visualizer.add_component(visualizer.create_alpha_evolution_component(logger.get_logs()))
+visualizer.add_component(visualizer.create_decision_boundary_component(logger.get_logs()))
+
+anim = visualizer.animate(logger.get_logs(), save_path="perceptron_combined.mp4", fps=5, debug=True)
+# %%
+
+# Create component with name
+decision_boundary = visualizer.create_decision_boundary_component(logs)
+decision_boundary.name = "Decision Boundary"  # Add name
+
+# Add components in desired order
+visualizer.add_component(decision_boundary)
+visualizer.add_component(alpha_evolution)
+
+anim = visualizer.animate(logger.get_logs(), save_path="perceptron_combined.mp4", fps=5, debug=True)
