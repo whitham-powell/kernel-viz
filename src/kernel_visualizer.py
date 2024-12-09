@@ -245,6 +245,7 @@ class AnimationComponent:
     setup_func: Callable[[plt.Axes], List[Artist]]
     update_func: Callable[[int, plt.Axes, List[Artist]], List[Artist]]
     subplot_params: Dict[str, Any]
+    name: Optional[str] = None
 
 
 # TODO: refactor PerceptronVisualizer class to PerceptronVisualizer file
@@ -261,46 +262,58 @@ class PerceptronVisualizer:
 
     def add_component(self, component: AnimationComponent) -> None:
         self.components.append(component)
+        self._update_grid_layout()
 
-    def _setup_grid(self, fig: plt.Figure, n_components: int) -> plt.GridSpec:
-        """Setup the grid layout based on number of components."""
-        if self.debug_mode:
-            print(f"Setting up grid with {n_components} components")
-
-        if n_components == 1:
-            return plt.GridSpec(1, 1, figure=fig)
-        if n_components <= 2:
-            return plt.GridSpec(1, 2, figure=fig)
+    def _calculate_grid_dimensions(self) -> Tuple[int, int]:
+        """Calculate optimal grid dimensions based on number of components"""
+        n = len(self.components)
+        if n <= 1:
+            return (1, 1)
+        elif n == 2:
+            return (1, 2)
+        elif n == 3:
+            return (2, 2)
+        elif n == 4:
+            return (2, 2)
         else:
-            return plt.GridSpec(2, 2, figure=fig)
+            # For more components create a roughly square grid
+            cols = int(np.ceil(np.sqrt(n)))
+            rows = int(np.ceil(n / cols))
+            return (rows, cols)
 
-    def _calculate_grid_positions(self) -> Dict[int, Tuple[int, int]]:
-        """Calculate the grid positions for each component."""
+    def _update_grid_layout(self) -> None:
+        """Update grid positions for all components based on current configuration."""
+        rows, cols = self._calculate_grid_dimensions()
         n_components = len(self.components)
-        positions = {}
-
-        if n_components == 1:
-            positions[0] = (0, 0)
-        elif n_components == 2:
-            positions[0] = (0, 0)
-            positions[1] = (0, 1)
-        elif n_components == 3:
-
-            for idx in range(n_components):
-                row = idx // 2
-                col = idx % 2
-                positions[idx] = (row, col)
 
         if self.debug_mode:
-            print(f"Calculated grid positions for {n_components} components")
-            for idx, pos in positions.items():
-                print(f"Component {idx}: position {pos}")
-        return positions
+            print(
+                f"Updating grid layout: {rows} x {cols} for {n_components} components",
+            )
 
-    def update_component_grid_positions(self) -> None:
-        positions = self._calculate_grid_positions()
-        for idx, component in enumerate(self.components):
-            component.subplot_params["gridspec"] = positions[idx]
+        # Special layouts for common cases
+        if n_components == 1:
+            self.components[0].subplot_params["gridspec"] = (0, slice(None))
+        elif n_components == 2:
+            self.components[0].subplot_params["gridspec"] = (0, 0)
+            self.components[1].subplot_params["gridspec"] = (0, 1)
+
+        else:
+            # General case: fill grid left to right, top to bottom
+            for idx, component in enumerate(self.components):
+                row = idx // cols
+                col = idx % cols
+
+                # Special handling for components that should span multiple columns
+                if idx == n_components - 1 and cols > 1 and idx % cols == 0:
+                    component.subplot_params["gridspec"] = (row, slice(col, cols))
+                else:
+                    component.subplot_params["gridspec"] = (row, col)
+
+                if self.debug_mode:
+                    print(
+                        f"Component {idx} ({component.name}) position: {component.subplot_params['gridspec']}",
+                    )
 
     def _save_animation(self, save_path: str, fps: int) -> None:
         """Save animation with error handling."""
@@ -333,49 +346,50 @@ class PerceptronVisualizer:
         """Create and display/save the combined animation."""
         self.set_debug_mode(debug)
         self.total_frames = len(logs["misclassification_count"])
+        begin_animate_time = time.time()
+
+        if len(self.components) == 0:
+            raise ValueError("No components added to visualizer")
 
         # TODO add error handling for missing logs / use if raise
         assert (
             self.total_frames is not None and self.total_frames > 0
         ), f"Animation requires valid number of frames. self.total_frames={self.total_frames}"
 
+        plt.close("all")  # Close any existing figures
+        self.figure = plt.figure(figsize=figsize)
+        rows, cols = self._calculate_grid_dimensions()
+        self.grid_spec = plt.GridSpec(
+            rows,
+            cols,
+            figure=self.figure,
+            width_ratios=[1, 1.2],
+        )
+
         if self.debug_mode:
             print("Debug mode enabled")
             print(f"Starting animation with {self.total_frames} frames")
-
-        # FIXME: Close any existing figures - added for debugging
-        plt.close("all")  # Close any existing figures - added for debugging
-        fig = plt.figure(figsize=figsize)
-
-        # Determine grid layout based on number of components
-        n_components = len(self.components)
-        if n_components == 0:
-            raise ValueError("No components added to visualizer")
-
-        gs = self._setup_grid(fig, n_components)
+            print(f"Created {rows}x{cols} grid for {len(self.components)} components")
 
         # Initialize components
         component_artists = []
         for idx, component in enumerate(self.components):
             if self.debug_mode:
-                print(f"Setting up component {idx}")
+                print(f"Setting up component {idx}: {component.name}")
 
-            ax = fig.add_subplot(gs[component.subplot_params["gridspec"]])
+            grid_pos = component.subplot_params.get("gridspec")
+            ax = self.figure.add_subplot(self.grid_spec[grid_pos])
+
             try:
                 artists = component.setup_func(ax)
-                if self.debug_mode:
-                    print(
-                        f"Component {idx} setup completed with {len(artists)} artists",
-                    )
                 component_artists.append((component, ax, artists))
-
             except Exception as e:
-                print(f"Error setting up component {idx}: {e}")
+                print(f"Error setting up component {idx} : {component.name}: {e}")
                 raise
 
         def update(frame: int) -> List[Artist]:
             if self.debug_mode:
-                start_time = time.time()
+                update_frame_time = time.time()
                 assert (
                     self.total_frames is not None
                 ), "self.total_frames is None in animate() -> update()"
@@ -383,33 +397,36 @@ class PerceptronVisualizer:
 
             all_artists = []
 
-            for idx, (component, ax, artists) in enumerate(component_artists):
+            for component, ax, artists in component_artists:
                 try:
-                    if self.debug_mode:
-                        print(f"Updating component {idx}")
                     updated_artists = component.update_func(frame, ax, artists)
                     if not isinstance(updated_artists, list):
                         print(
-                            f"Warning: Component {idx} returned non-list: type={type(updated_artists)}",
+                            f"Warning: Component {component.name} returned non-list: type={type(updated_artists)}",
                         )
                         updated_artists = list(updated_artists)
 
                     all_artists.extend(updated_artists)
                 except Exception as e:
-                    print(f"Error updating component {idx} at frame {frame}: {e}")
+                    print(
+                        f"Error updating component {component.name} at frame {frame}: {e}",
+                    )
                     raise
 
             if self.debug_mode:
-                print(f"Frame {frame} completed in {time.time() - start_time:.3f}s")
-                print(f"Returned {len(all_artists)} artists")
+                print(
+                    f"Frame {frame} completed in {time.time() - update_frame_time:.3f}s",
+                )
 
             return all_artists
 
+        # Main figure layout configuration
+        self.figure.tight_layout(pad=1.75)
         # TODO should this be a class attribute?
         interval = 1000 / fps
 
         self._animation = FuncAnimation(
-            fig,
+            self.figure,
             update,
             frames=self.total_frames,
             interval=interval,
@@ -423,10 +440,9 @@ class PerceptronVisualizer:
             self._save_animation(save_path, fps)
 
         plt.tight_layout()
-        if self.debug_mode:
-            print(
-                f"Animation configured with {self.total_frames} and ready for display",
-            )
+        print(
+            f"Animation configured with {self.total_frames} and ready for display or saving in {time.time() - begin_animate_time:.3f}s",
+        )
 
         return self._animation
 
@@ -596,7 +612,7 @@ class PerceptronVisualizer:
                 (line,) = ax.plot(
                     [],
                     [],
-                    label=f"Point {i}",
+                    label=f"$\\alpha_{{{i}}}$",
                     alpha=0.3,
                     linewidth=0.5,
                     color="gray",
@@ -615,6 +631,9 @@ class PerceptronVisualizer:
             )
             ax.set_ylim(y_min, y_max)
 
+            # Aspect ratio control
+            ax.set_aspect(1)
+
             # Set labels and grid
             ax.set_title("Alpha Values Evolution")
             ax.set_xlabel("Training Iteration")
@@ -622,7 +641,13 @@ class PerceptronVisualizer:
             ax.grid(True, linestyle="--", alpha=0.7)
 
             # Position legend relative to alpha evolution plot itself
-            ax.legend(bbox_to_anchor=(1.05, 1), loc="upper left")
+            ax.legend(
+                loc="center left",
+                bbox_to_anchor=(1.02, 0.5),
+                ncol=3,
+                borderaxespad=0,
+                fontsize="small",
+            )
 
             if self.debug_mode:
                 print(f"Created {len(lines)} lines")
@@ -637,7 +662,13 @@ class PerceptronVisualizer:
                 print(f"\n Updating frame {frame}")
 
             current_alphas = alphas_history[frame]["alphas"]
-            legend = ax.legend(bbox_to_anchor=(1.05, 1), loc="upper left")
+            legend = ax.legend(
+                loc="center left",
+                bbox_to_anchor=(1.02, 0.5),
+                ncol=3,
+                borderaxespad=0,
+                fontsize="small",
+            )
 
             # Update each line
             for idx, line in enumerate(artists):

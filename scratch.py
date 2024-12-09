@@ -181,7 +181,7 @@ plt.show()
 # n_samples = 20
 # xs = np.random.randn(n_samples, 2)
 # ys = np.sign(xs[:, 0] * xs[:, 1])
-#%%
+
 # Train perceptron and log
 logger = PerceptronLogger()
 alphas = kernelized_perceptron(
@@ -270,21 +270,31 @@ assert anim is not None
 assert os.path.exists("perceptron_misclassification_tracker.mp4")
 
 print("Test passed!")
-# %%
 
+# %%
 visualizer = PerceptronVisualizer()
-visualizer.add_component(visualizer.create_alpha_evolution_component(logger.get_logs()))
-visualizer.add_component(visualizer.create_decision_boundary_component(logger.get_logs()))
-
-anim = visualizer.animate(logger.get_logs(), save_path="perceptron_combined.mp4", fps=5, debug=True)
-# %%
 
 # Create component with name
-decision_boundary = visualizer.create_decision_boundary_component(logs)
+decision_boundary = visualizer.create_decision_boundary_component(logger.get_logs())
 decision_boundary.name = "Decision Boundary"  # Add name
 
+# Create component with name
+alpha_evolution = visualizer.create_alpha_evolution_component(logger.get_logs())
+alpha_evolution.name = "Alpha Evolution"  # Add name
+
+# Create component with name
+kernel_response = visualizer.create_kernel_response_component(logger.get_logs())
+kernel_response.name = "Kernel Response"  # Add name
+
+# Create component with name
+misclassification_tracker = visualizer.create_misclassification_tracker_component(logger.get_logs())
+misclassification_tracker.name = "Misclassification Tracker"  # Add name
+
 # Add components in desired order
-visualizer.add_component(decision_boundary)
+# visualizer.add_component(decision_boundary)
 visualizer.add_component(alpha_evolution)
+visualizer.add_component(kernel_response)
+# visualizer.add_component(misclassification_tracker)
 
 anim = visualizer.animate(logger.get_logs(), save_path="perceptron_combined.mp4", fps=5, debug=True)
+# %%
