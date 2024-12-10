@@ -1,0 +1,15 @@
+{
+    "mypy-type-checker.args": [
+        "--config-file=setup.cfg"
+    ],
+    "python.testing.pytestArgs": [
+        "tests"
+    ],
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true,
+    "python.analysis.typeCheckingMode": "standard",
+    "cSpell.words": [
+        "kernelized",
+        "RKHS"
+    ]
+}
