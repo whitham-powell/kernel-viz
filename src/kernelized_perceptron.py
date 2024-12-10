@@ -48,7 +48,7 @@ class PerceptronLogger:
         """Log the feature space. Should only be logged once per training."""
         self.logs["feature_space"] = feature_space.copy()
 
-    def log_true_labels(self, labels: NDArray[np.float64]) -> None:
+    def log_true_labels(self, labels: NDArray[np.int64]) -> None:
         """Log the true labels. Should only be logged once per training."""
         self.logs["true_labels"] = labels.copy()
 
@@ -97,7 +97,7 @@ class PerceptronLogger:
 
 def kernelized_perceptron(
     xs: NDArray[np.float64],
-    ys: NDArray[np.float64],
+    ys: NDArray[np.int64],
     kernel: Callable[[ArrayLike, ArrayLike], Union[float, ArrayLike]],
     kernel_params: Optional[Dict[str, Any]] = None,
     max_iter: int = 100,
