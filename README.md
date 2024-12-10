@@ -10,23 +10,18 @@ This project implements a framework for visualizing kernels via a kernelized per
 
 # To-Do
 - [ ] **Core Implementation**
-  - [x] Implement kernelized perceptron
-  - [x] Add parameterized kernel functions (linear, polynomial, RBF, etc.)
-  - [x] Unit tests for kernelized perceptron and helper functions
   - [ ] Juptyer notebook for kernelized perceptron usage examples
-  - [ ] 2D decision boundary plotting
 
   - **Visualizations**
-    - [ ] Multiple component animations - WIP
+    - [x] Multiple component animations
     - [x] Single component animations
     - [ ] Kernel response component - WIP
     - [ ] Kernel matrix heatmap
-    - [ ] Alpha evolution component - Need to test this fully
+    - [x] Alpha evolution component
     - [x] 2D decision boundary plotting
 
 - **Documentation**
   - [ ] Add usage examples
-  - [ ] Explain kernelized perceptron in the context of RKHS
   - [ ] Provide step-by-step instructions for running the code
   - [ ] Include mathematical derivations or references for kernelized methods
 
