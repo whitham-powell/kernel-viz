@@ -5,17 +5,13 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib import animation
 from matplotlib.animation import Animation, FuncAnimation
 from matplotlib.artist import Artist
 from matplotlib.axes import Axes
 from matplotlib.collections import PathCollection
 from matplotlib.contour import QuadContourSet
-from matplotlib.lines import Line2D
 from numpy.typing import ArrayLike, NDArray
 from typing_extensions import TypeAlias
-
-from src.kernelized_perceptron import PerceptronLogger
 
 ContourOutput: TypeAlias = Union[QuadContourSet, List[PathCollection]]
 
@@ -60,190 +56,13 @@ def compute_decision_boundary(
     return xx, yy, zz
 
 
-def setup_animation(
-    xs: NDArray[np.float64],
-    ys: NDArray[np.float64],
-    ax: plt.Axes,
-) -> PathCollection:
-    """
-    Setup initial plot elements.
-
-    Parameters:
-        xs: Input features array of shape (n_samples, n_features)
-        ys: Target labels array of shape (n_samples,)
-        ax: Matplotlib axes object for plotting
-
-    Returns:
-        PathCollection: The scatter plot object
-    """
-    scatter = ax.scatter(xs[:, 0], xs[:, 1], c=ys, cmap="bwr", edgecolor="k", zorder=2)
-
-    margin = 0.1
-    x_min, x_max = xs[:, 0].min(), xs[:, 0].max()
-    y_min, y_max = xs[:, 1].min(), xs[:, 1].max()
-
-    ax.set_xlim([x_min - margin * (x_max - x_min), x_max + margin * (x_max - x_min)])
-    ax.set_ylim([y_min - margin * (y_max - y_min), y_max + margin * (y_max - y_min)])
-
-    return scatter
-
-
-def create_update_func(
-    xs: NDArray[np.float64],
-    ax: Axes,
-    kernel: Callable[[ArrayLike, ArrayLike], Union[float, ArrayLike]],
-    kernel_params: Dict[str, Any],
-    alphas_logs: List[Dict[str, NDArray[np.float64]]],
-    plot_type: str,
-    fixed_dims: Optional[Dict[int, float]],
-) -> Callable[[int], Union[List[Line2D], List[PathCollection]]]:
-    """
-    Creates the update function for the animation.
-
-    Parameters:
-        xs: Input features array
-        ax: Matplotlib axes object
-        kernel: Kernel function for decision boundary computation
-        kernel_params: Parameters for the kernel function
-        alphas_logs: List of dictionaries containing alpha values for each frame
-        plot_type: Type of visualization ('line' or 'contour')
-        fixed_dims: Dictionary of fixed dimensions
-
-    Returns:
-        Callable: Update function for the animation
-    """
-    contour: Optional[QuadContourSet] = None
-    line: Optional[Line2D] = None
-
-    if plot_type == "line":
-        (line,) = ax.plot([], [], "k-", lw=2)
-
-    def update(frame: int) -> Union[List[Line2D], List[PathCollection]]:
-        nonlocal contour, line
-        alphas = alphas_logs[frame]["alphas"]
-
-        # Compute decision boundary
-        xx, yy, zz = compute_decision_boundary(
-            xs,
-            alphas,
-            kernel,
-            kernel_params,
-            fixed_dims,
-        )
-
-        # Update visualization based on plot type
-        if plot_type == "line":
-            if contour:
-                for c in contour.collections:
-                    c.remove()
-            contour = ax.contour(xx, yy, zz, levels=[0], colors="black")
-            if line is not None and contour.collections[0].get_paths():
-                line_coords = contour.collections[0].get_paths()[0].vertices
-                line.set_data(line_coords[:, 0], line_coords[:, 1])
-                return [line]
-            return []
-        else:
-            if contour:
-                for c in contour.collections:
-                    c.remove()
-            contour = ax.contourf(
-                xx,
-                yy,
-                zz,
-                levels=[-1, 0, 1],
-                alpha=0.3,
-                cmap="coolwarm",
-            )
-            ax.set_title(f"Iteration {frame + 1}")
-            return contour.collections  # type: ignore
-
-    return update
-
-
-def animate_decision_boundary(
-    logger: PerceptronLogger,
-    xs: NDArray[np.float64],
-    ys: NDArray[np.float64],
-    plot_type: Optional[str] = None,
-    save_path: Optional[str] = None,
-    fps: int = 10,
-    fixed_dims: Optional[Dict[int, float]] = None,
-) -> None:
-    """
-    Animate the decision boundary evolution.
-
-    Parameters:
-        logger: PerceptronLogger object containing training history
-        xs: Input features
-        ys: Target labels
-        plot_type: Type of visualization ('line' or 'contour')
-        save_path: Path to save the animation
-        fps: Frames per second for the animation
-        fixed_dims: Dictionary of fixed dimensions
-    """
-    # Get training history
-    logs = logger.get_logs()
-    alphas_logs = logs["alphas"]
-    kernel = logs["kernel"]
-    kernel_params = logs["kernel_params"]
-
-    # Determine plot type based on kernel
-    if plot_type is None:
-        plot_type = "line" if kernel.__name__ == "linear_kernel" else "contour"
-
-    # Setup figure and initial plot
-    fig, ax = plt.subplots(figsize=(8, 6))
-    setup_animation(xs, ys, ax)
-
-    # Create animation
-    update_func = create_update_func(
-        xs,
-        ax,
-        kernel,
-        kernel_params,
-        alphas_logs,
-        plot_type,
-        fixed_dims,
-    )
-
-    ani = FuncAnimation(
-        fig,
-        update_func,
-        frames=len(alphas_logs),
-        repeat=False,
-        blit=True,  # Enable blitting for better performance
-    )
-
-    # Save animation if requested
-    if save_path:
-        save_animation(ani, save_path, fps)
-
-    plt.show()
-    plt.close()
-
-
-def save_animation(ani: FuncAnimation, save_path: str, fps: int) -> None:
-    """Save animation to file."""
-    file_extension = save_path.split(".")[-1].lower()
-
-    if file_extension in ["mp4", "mov"]:
-        writer = animation.FFMpegWriter(fps=fps)
-        ani.save(save_path, writer=writer)
-    elif file_extension == "gif":
-        ani.save(save_path, writer="pillow", fps=fps)
-    else:
-        raise ValueError(
-            f"Unsupported file extension: {file_extension}. Use 'mp4', 'mov', or 'gif'.",
-        )
-
-
 # TODO: refactor AnimationComponent class to PerceptronVisualizer file
 @dataclass
 class AnimationComponent:
     """Represents a single visualization component."""
 
-    setup_func: Callable[[plt.Axes], List[Artist]]
-    update_func: Callable[[int, plt.Axes, List[Artist]], List[Artist]]
+    setup_func: Callable[[Axes], List[Artist]]
+    update_func: Callable[[int, Axes, List[Artist]], List[Artist]]
     subplot_params: Dict[str, Any]
     name: Optional[str] = None
 
@@ -468,13 +287,13 @@ class PerceptronVisualizer:
                 else "contour"
             )
 
-        def clear_old_contours(ax: plt.Axes) -> None:
+        def clear_old_contours(ax: Axes) -> None:
             """Remove all contour collections from previous frame."""
             for artist in ax.collections[1:]:  # Keep scatter plot
                 artist.remove()
 
         def update_line_plot(
-            ax: plt.Axes,
+            ax: Axes,
             artists: List[Artist],
             xx: ArrayLike,
             yy: ArrayLike,
@@ -494,7 +313,7 @@ class PerceptronVisualizer:
             return [scatter, line]
 
         def update_contour_plot(
-            ax: plt.Axes,
+            ax: Axes,
             artists: List[Artist],
             xx: ArrayLike,
             yy: ArrayLike,
@@ -514,7 +333,7 @@ class PerceptronVisualizer:
             ax.set_title(f"Iteration {frame + 1}")
             return [scatter] + list(contour.collections)
 
-        def setup(ax: plt.Axes) -> List[Artist]:
+        def setup(ax: Axes) -> List[Artist]:
             # Setup scatter plot
             scatter = ax.scatter(
                 xs[:, 0],
@@ -548,7 +367,7 @@ class PerceptronVisualizer:
                 return [scatter, line]
             return [scatter]
 
-        def update(frame: int, ax: plt.Axes, artists: List[Artist]) -> List[Artist]:
+        def update(frame: int, ax: Axes, artists: List[Artist]) -> List[Artist]:
             """Update the visualization for the current frame."""
             # Clear any existing contours
             clear_old_contours(ax)
@@ -608,7 +427,7 @@ class PerceptronVisualizer:
             print(f"Margin: {margin:.4f}")
             print(f"Y-axis limits: [{y_min:.4f}, {y_max:.4f}]")
 
-        def setup(ax: plt.Axes) -> List[Artist]:
+        def setup(ax: Axes) -> List[Artist]:
             if self.debug_mode:
                 print("Setting up alpha evolution component")
 
@@ -661,7 +480,7 @@ class PerceptronVisualizer:
 
             return lines
 
-        def update(frame: int, ax: plt.Axes, artists: List[Artist]) -> List[Artist]:
+        def update(frame: int, ax: Axes, artists: List[Artist]) -> List[Artist]:
 
             if self.debug_mode:
                 print(f"\n Updating frame {frame}")
@@ -785,7 +604,7 @@ class PerceptronVisualizer:
                 f"Global response range: [{global_response_min:.4f}, {global_response_max:.4f}]",
             )
 
-        def setup(ax: plt.Axes) -> List[Artist]:
+        def setup(ax: Axes) -> List[Artist]:
             if self.debug_mode:
                 print("Setting up kernel response component")
 
@@ -873,7 +692,7 @@ class PerceptronVisualizer:
 
             return [surface, points_pos, points_neg, contours]
 
-        def update(frame: int, ax: plt.Axes, artists: List[Artist]) -> List[Artist]:
+        def update(frame: int, ax: Axes, artists: List[Artist]) -> List[Artist]:
             if self.debug_mode and frame % 10 == 0:
                 print(f"\nUpdating frame {frame}")
 
@@ -965,7 +784,7 @@ class PerceptronVisualizer:
         """Shows the constant kernel matrix and current alpha-weighted values."""
         kernel_matrix = logs["kernel_matrix"]
 
-        def setup(ax: plt.Axes) -> List[Artist]:
+        def setup(ax: Axes) -> List[Artist]:
             im = ax.imshow(kernel_matrix, cmap="viridis", aspect="equal")
             plt.colorbar(im, ax=ax)
             ax.set_title("Kernel Matrix & Alpha Contributions")
@@ -980,7 +799,7 @@ class PerceptronVisualizer:
 
             return [im, alpha_line]
 
-        def update(frame: int, ax: plt.Axes, artists: List[Artist]) -> List[Artist]:
+        def update(frame: int, ax: Axes, artists: List[Artist]) -> List[Artist]:
             im, alpha_line = artists
             alphas = logs["alphas"][frame]["alphas"]
 
@@ -1009,7 +828,7 @@ class PerceptronVisualizer:
         kernel = logs["kernel"]  # Kernel function
         kernel_params = logs["kernel_params"] or {}  # Kernel parameters
 
-        def setup(ax: plt.Axes) -> List[Artist]:
+        def setup(ax: Axes) -> List[Artist]:
             """
             Setup the misclassification tracker visualization.
             """
@@ -1059,7 +878,7 @@ class PerceptronVisualizer:
 
             return [points]
 
-        def update(frame: int, ax: plt.Axes, artists: List[Artist]) -> List[Artist]:
+        def update(frame: int, ax: Axes, artists: List[Artist]) -> List[Artist]:
             """
             Update the visualization for the given iteration.
             """

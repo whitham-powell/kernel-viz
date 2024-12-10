@@ -52,7 +52,7 @@ alphas = kernelized_perceptron(
     ys,
     kernel=demo_kernel,  # type: ignore
     kernel_params=demo_kernel_params,
-    max_iter=50,
+    max_iter=5,
     logger=logger,
 )
 demo_logs = logger.get_logs()
