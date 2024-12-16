@@ -10,6 +10,7 @@ from matplotlib.artist import Artist
 from matplotlib.axes import Axes
 from matplotlib.collections import PathCollection
 from matplotlib.contour import QuadContourSet
+from matplotlib.gridspec import GridSpec
 from numpy.typing import ArrayLike, NDArray
 from typing_extensions import TypeAlias
 
@@ -180,7 +181,7 @@ class PerceptronVisualizer:
         plt.close("all")  # Close any existing figures
         self.figure = plt.figure(figsize=figsize)
         rows, cols = self._calculate_grid_dimensions()
-        self.grid_spec = plt.GridSpec(
+        self.grid_spec = GridSpec(
             rows,
             cols,
             figure=self.figure,
