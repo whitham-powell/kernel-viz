@@ -95,7 +95,11 @@ class TestDecisionBoundaryComponent:
 
         # Verify frame-specific state
         assert len(updated_artists) >= len(artists)
-        assert ax.get_title() == "Decision Boundary"
+
+        expected_title = f"Decision Boundary - Iteration {frame + 1}"
+        assert (
+            ax.get_title() == expected_title
+        ), f"Expected title '{expected_title}' but got '{ax.get_title()}'"
 
         plt.close(fig)
 
@@ -119,7 +123,7 @@ class TestAlphaEvolutionComponent:
         # Check line properties
         for line in artists:
             assert line.get_linestyle() == "-"
-            assert line.get_alpha() in (0.7, 0.1)  # Active or inactive
+            assert line.get_alpha() == 0.3  # Initial alpha value
 
         plt.close(fig)
 
@@ -137,15 +141,27 @@ class TestAlphaEvolutionComponent:
         # Check frame-specific state
         alphas = sample_logs["alphas"][frame]["alphas"]
         active_count = np.sum(np.abs(alphas) > 1e-10)
+        total_lines = len(alphas)
 
-        # Count red (active) lines
+        # Count active (red) lines
         red_lines = sum(
             1
             for line in updated
             if line.get_color() == "red" and line.get_alpha() == 0.7
         )
 
-        assert red_lines == active_count
+        # Count inactive (gray) lines
+        gray_lines = sum(
+            1
+            for line in updated
+            if line.get_color() == "gray" and line.get_alpha() == 0.1
+        )
+
+        assert red_lines == active_count, "Incorrect number of active lines"
+        assert gray_lines == (
+            total_lines - active_count
+        ), "Incorrect number of inactive lines"
+        assert red_lines + gray_lines == total_lines, "Total line count mismatch"
 
         plt.close(fig)
 
@@ -187,10 +203,17 @@ class TestVisualizerIntegration:
         # Create animation
         animation = visualizer.animate(sample_logs)
 
+        # Check the animation was created properly
         assert isinstance(animation, Animation)
-        assert animation.save_count == len(sample_logs["alphas"])
+        assert animation is not None
 
-        plt.close("all")
+        # Check total frames matches expected number of iterations
+        expected_frames = len(sample_logs["alphas"])
+        assert (
+            visualizer.total_frames == expected_frames
+        ), f"Expected {expected_frames} frames, got {visualizer.total_frames}"
+
+        plt.close("all")  # Clean up figure
 
     def test_grid_layout(self, sample_logs):
         """Test grid layout calculation and updates."""
@@ -214,18 +237,65 @@ class TestVisualizerIntegration:
         positions = [c.subplot_params["gridspec"] for c in visualizer.components]
         assert positions[0] != positions[1]
 
+    @pytest.mark.parametrize("n_components", [1, 2, 3, 4])
+    def test_animation_save(self, sample_logs, tmp_path, n_components):
+        """Test animation saving functionality with different component counts."""
+        visualizer = PerceptronVisualizer()
 
-def test_animation_save(sample_logs, tmp_path):
-    """Test animation saving functionality."""
-    visualizer = PerceptronVisualizer()
-    visualizer.add_component(visualizer.create_decision_boundary_component(sample_logs))
+        # Add requested number of components
+        for i in range(n_components):
+            # Alternate between component types to better match real usage
+            if i % 2 == 0:
+                visualizer.add_component(
+                    visualizer.create_decision_boundary_component(sample_logs),
+                )
+            else:
+                visualizer.add_component(
+                    visualizer.create_alpha_evolution_component(sample_logs),
+                )
 
-    # Test GIF saving
-    gif_path = tmp_path / "animation.gif"
-    animation = visualizer.animate(sample_logs, save_path=str(gif_path))  # noqa : F841
-    assert gif_path.exists()
+        # Test GIF saving
+        gif_path = tmp_path / f"animation_{n_components}_components.gif"
+        animation = visualizer.animate(  # noqa : F841
+            sample_logs,
+            save_path=str(gif_path),
+        )
+        assert gif_path.exists()
 
-    plt.close("all")
+        plt.close("all")
+
+    @pytest.mark.parametrize(
+        "n_components,expected_layout",
+        [
+            (1, (1, 1)),  # Single component: 1x1
+            (2, (1, 2)),  # Two components: 1x2
+            (3, (2, 2)),  # Three components: 2x2 (with bottom spanning)
+            (4, (2, 2)),  # Four components: 2x2
+        ],
+    )
+    def test_grid_layouts(self, sample_logs, n_components, expected_layout):
+        """Test grid layout calculations for different component counts."""
+        visualizer = PerceptronVisualizer()
+
+        # Add requested number of components
+        for _ in range(n_components):
+            visualizer.add_component(
+                visualizer.create_decision_boundary_component(sample_logs),
+            )
+
+        rows, cols = visualizer._calculate_grid_dimensions()
+        assert (rows, cols) == expected_layout
+
+        # For three components, verify bottom component spans columns
+        if n_components == 3:
+            # Check that last component's gridspec spans columns
+            last_component = visualizer.components[-1]
+            gridspec = last_component.subplot_params["gridspec"]
+            assert isinstance(
+                gridspec[1],
+                slice,
+            ), "Bottom component should span columns"
+            assert gridspec[1].start == 0 and gridspec[1].stop == 2
 
 
 if __name__ == "__main__":

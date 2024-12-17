@@ -331,7 +331,8 @@ class PerceptronVisualizer:
                 alpha=0.3,
                 cmap="coolwarm",
             )
-            ax.set_title(f"Iteration {frame + 1}")
+            # Update title for each frame
+            ax.set_title(f"Decision Boundary - Iteration {frame + 1}")
             return [scatter] + list(contour.collections)
 
         def setup(ax: Axes) -> List[Artist]:
@@ -355,8 +356,8 @@ class PerceptronVisualizer:
             ax.set_ylim(
                 [y_min - margin * (y_max - y_min), y_max + margin * (y_max - y_min)],
             )
-
-            ax.set_title("Decision Boundary")
+            # Set initial title
+            ax.set_title("Decision Boundary - Iteration 1")
 
             # Set axes
             ax.set_xlabel("Feature 1")
