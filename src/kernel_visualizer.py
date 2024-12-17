@@ -181,11 +181,17 @@ class PerceptronVisualizer:
         plt.close("all")  # Close any existing figures
         self.figure = plt.figure(figsize=figsize)
         rows, cols = self._calculate_grid_dimensions()
+
+        # Only specify width_ratios for multi-column layouts
+        grid_params = {}
+        if cols == 2:
+            grid_params["width_ratios"] = [1, 1.2]
+
         self.grid_spec = GridSpec(
             rows,
             cols,
             figure=self.figure,
-            width_ratios=[1, 1.2],
+            **grid_params,
         )
 
         if self.debug_mode:
