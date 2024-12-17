@@ -84,6 +84,9 @@ class PerceptronVisualizer:
         self.components.append(component)
         self._update_grid_layout()
 
+    def remove_component(self, component: AnimationComponent) -> None:
+        raise NotImplementedError("remove_component() is not implemented yet")
+
     def _calculate_grid_dimensions(self) -> Tuple[int, int]:
         """Calculate optimal grid dimensions based on number of components"""
         n = len(self.components)
