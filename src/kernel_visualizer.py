@@ -168,6 +168,7 @@ class PerceptronVisualizer:
     ) -> Animation:
         """Create and display/save the combined animation."""
         self.set_debug_mode(debug)
+        # FIXME: this is problematic, we should determine the number of frames by the iteration count
         self.total_frames = len(logs["misclassification_count"])
         begin_animate_time = time.time()
 
