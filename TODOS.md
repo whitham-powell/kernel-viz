@@ -7,15 +7,15 @@ This file tracks all TODO/FIXME items found in the codebase that need to be addr
 These issues may affect correctness or usability and should be addressed first:
 
 ### 1. Visualization Component Issues
-- [ ] **FIXME** (src/kernel_viz/visualization/core.py:172): Frame count determination is problematic - should be based on iteration count
+- [x] **FIXME** (src/kernel_viz/visualization/core.py:172): Frame count determination is problematic - should be based on iteration count
 - [ ] **FIXME** (src/kernel_viz/visualization/core.py:557): Kernel response animation may be incorrectly implemented for kernelized perceptron
 - [ ] **FIXME** (src/kernel_viz/visualization/core.py:791-792): Kernel matrix animation may not be useful since kernel matrix doesn't change during training
 
 ### 2. Algorithm Correctness
-- [ ] **TODO** (src/kernel_viz/algorithms/perceptron.py:86): Replace print statement with exception/warning for kernel positive definiteness check
+- [x] **TODO** (src/kernel_viz/algorithms/perceptron.py:86): Replace print statement with exception/warning for kernel positive definiteness check
 
 ### 3. Missing Error Handling
-- [ ] **TODO** (src/kernel_viz/visualization/core.py:179): Add error handling for missing logs in visualization
+- [x] **TODO** (src/kernel_viz/visualization/core.py:179): Add error handling for missing logs in visualization
 
 ## Code Organization (Medium Priority)
 

@@ -1,5 +1,6 @@
 # kernelized_perceptron.py
 
+import warnings
 from typing import Any, Callable, Dict, Optional, Union
 
 import numpy as np
@@ -83,11 +84,15 @@ class PerceptronLogger:
                         f"Error computing kernel matrix for indices (i={i}, j={j}): {e}",
                     ) from e
 
-        # TODO: This should probably be an exception or warning instead. In the context of RKHS this is required to be true.
-        assert np.allclose(
-            kernel_matrix,
-            kernel_matrix.T,
-        ), "Kernel matrix is not symmetric"
+        # Check kernel matrix symmetry - required for valid kernels in RKHS
+        if not np.allclose(kernel_matrix, kernel_matrix.T, rtol=1e-10, atol=1e-10):
+            warnings.warn(
+                "Kernel matrix is not symmetric within tolerance (rtol=1e-10, atol=1e-10). "
+                "This violates the requirements for a valid kernel in Reproducing Kernel Hilbert Space (RKHS). "
+                "The kernel function may be incorrectly implemented or have numerical precision issues.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
         return kernel_matrix
 
     def get_logs(self) -> Dict[str, Any]:
