@@ -48,13 +48,13 @@ source .venv/bin/activate
     - [x] 2D decision boundary plotting
 
 - **Documentation**
-  - [ ] Add usage examples
-  - [ ] Provide step-by-step instructions for running the code
-  - [ ] Include mathematical derivations or references for kernelized methods
+  - [x] Add usage examples
+  - [x] Provide step-by-step instructions for running the code
+  - [x] Include mathematical derivations or references for kernelized methods
 
 - **Testing**
-  - [ ] Comprehensive unit tests for all kernels
-  - [ ] Add tests for visualizations
+  - [x] Comprehensive unit tests for all kernels
+  - [x] Add tests for visualizations
 
 # Future Work
 - **Core Extensions**
@@ -63,13 +63,19 @@ source .venv/bin/activate
   - [ ] Implement kernelized K-means
   - [ ] Explore other kernelized methods (e.g., kernelized regression)
 
+- **Performance Features** (New)
+  - [x] Optimized kernel response surface visualization with ~2x speedup
+  - [x] Vectorized kernel computations for common kernels
+  - [x] Pre-computed kernel matrices with caching
+  - [x] Configurable grid resolution with interpolation
+
 - **Advanced Visualizations**
-  - [ ] Evolution of decision boundaries during training
-  - [ ] Visualization of support vectors
+  - [x] Evolution of decision boundaries during training
+  - [x] Visualization of support vectors
   - [ ] Interactive visualizations for parameter adjustments
   - [ ] 3D visualization of decision surfaces
   - [ ] Loss/accuracy tracking during training
-  - [ ] Performance optimizations for large datasets
+  - [x] Performance optimizations for large datasets
 ## Usage
 
 ### Quick Start with Makefile
