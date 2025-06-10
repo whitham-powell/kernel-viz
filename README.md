@@ -99,8 +99,6 @@ flake8 src/ tests/
 # Type checking
 mypy src/
 
-# Security scanning
-bandit -r src/
 ```
 
 ### Running Demos

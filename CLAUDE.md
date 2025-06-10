@@ -45,8 +45,6 @@ flake8 src/ tests/
 # Type checking
 mypy src/
 
-# Security scanning
-bandit -r src/
 ```
 
 ### Running Demos
@@ -94,14 +92,13 @@ Tests use pytest with matplotlib plot comparison (pytest-mpl). Test configuratio
 
 Core: numpy, matplotlib, scikit-learn, scipy, pandas, seaborn
 Video: ffmpeg-python (requires system ffmpeg for animation export)
-Dev: pytest, black, flake8, mypy, isort, bandit, pre-commit
+Dev: pytest, black, flake8, mypy, isort, pre-commit
 
 ### Pre-commit Hooks
 
 Pre-commit is configured with the following tools:
 - **Formatters**: black, isort, yamlfmt, add-trailing-comma
 - **Linters**: flake8 (with flake8-pyproject), mypy
-- **Security**: bandit (runs on pre-push)
 - **General**: trailing-whitespace, end-of-file-fixer, check-yaml
 
 All tool configurations are centralized in pyproject.toml for consistency.

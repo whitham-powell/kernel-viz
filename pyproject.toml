@@ -42,7 +42,6 @@ dev = [
     "pytest",
     "pytest-mpl",
     "mypy",
-    "bandit",
     "yamllint",
     "pyyaml",
     "pre-commit",
