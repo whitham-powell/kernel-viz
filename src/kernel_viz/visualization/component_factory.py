@@ -280,6 +280,165 @@ class AlphaEvolutionFactory(ComponentFactory):
         return artists
 
 
+class KernelMatrixHeatmapFactory(ComponentFactory):
+    """Factory for creating kernel matrix heatmap animation components.
+    
+    This component visualizes the kernel matrix as a heatmap and animates
+    the evolution of support vectors (non-zero alpha values) during training.
+    """
+    
+    def __init__(self, logs: Dict[str, Any], debug_mode: bool = False):
+        self.debug_mode = debug_mode
+        super().__init__(logs)
+    
+    def _extract_data(self) -> None:
+        """Extract necessary data from logs."""
+        self.kernel_matrix = self.logs.get("kernel_matrix")
+        self.xs = self.logs["feature_space"]
+        self.kernel = self.logs["kernel"]
+        self.kernel_params = self.logs["kernel_params"] or {}
+        self.alphas_history = self.logs["alphas"]
+        self.n_samples = len(self.xs)
+        
+        # Compute kernel matrix if not provided
+        if self.kernel_matrix is None:
+            self.kernel_matrix = np.zeros((self.n_samples, self.n_samples))
+            for i in range(self.n_samples):
+                for j in range(self.n_samples):
+                    self.kernel_matrix[i, j] = self.kernel(
+                        self.xs[i], self.xs[j], **self.kernel_params
+                    )
+        
+        # Pre-compute color normalization bounds
+        self.vmin = -abs(self.kernel_matrix).max()
+        self.vmax = abs(self.kernel_matrix).max()
+        
+        if self.debug_mode:
+            print(f"Kernel matrix shape: {self.kernel_matrix.shape}")
+            print(f"Kernel matrix range: [{self.vmin:.3f}, {self.vmax:.3f}]")
+    
+    def setup(self, ax: Axes) -> List[Artist]:
+        """Setup initial visualization."""
+        # Create heatmap
+        im = ax.imshow(
+            self.kernel_matrix,
+            cmap="RdBu_r",
+            aspect="equal",
+            vmin=self.vmin,
+            vmax=self.vmax,
+        )
+        
+        # Add colorbar
+        cbar = plt.colorbar(im, ax=ax, pad=0.02)
+        cbar.set_label("Kernel Value", rotation=270, labelpad=15)
+        
+        # Set ticks and labels for small datasets
+        if self.n_samples <= 20:
+            ax.set_xticks(range(self.n_samples))
+            ax.set_yticks(range(self.n_samples))
+            ax.set_xticklabels([f"{i}" for i in range(self.n_samples)], fontsize=8)
+            ax.set_yticklabels([f"{i}" for i in range(self.n_samples)], fontsize=8)
+        
+        ax.set_xlabel("Sample Index")
+        ax.set_ylabel("Sample Index")
+        ax.set_title("Kernel Matrix K(x_i, x_j) - Iteration 1")
+        
+        # Add grid for better readability
+        ax.set_xticks(np.arange(self.n_samples) - 0.5, minor=True)
+        ax.set_yticks(np.arange(self.n_samples) - 0.5, minor=True)
+        ax.grid(which="minor", color="gray", linestyle="-", linewidth=0.2)
+        
+        # Initialize support vector indicators
+        # Create markers for diagonal (self-similarity) and off-diagonal separately
+        self.sv_markers_diag = []
+        self.sv_markers_row = []
+        self.sv_markers_col = []
+        
+        for i in range(self.n_samples):
+            # Diagonal marker (where i == j)
+            marker_diag = ax.plot(
+                i, i, "o", color="yellow", markersize=0,
+                markeredgecolor="black", markeredgewidth=1, zorder=3
+            )[0]
+            self.sv_markers_diag.append(marker_diag)
+            
+            # Row/column highlight markers
+            row_markers = []
+            col_markers = []
+            for j in range(self.n_samples):
+                if i != j:
+                    # Row marker
+                    marker_row = ax.plot(
+                        j, i, "s", color="yellow", markersize=0,
+                        markeredgecolor="black", markeredgewidth=0.5,
+                        alpha=0.6, zorder=2
+                    )[0]
+                    row_markers.append(marker_row)
+                    
+                    # Column marker
+                    marker_col = ax.plot(
+                        i, j, "s", color="yellow", markersize=0,
+                        markeredgecolor="black", markeredgewidth=0.5,
+                        alpha=0.6, zorder=2
+                    )[0]
+                    col_markers.append(marker_col)
+            
+            self.sv_markers_row.append(row_markers)
+            self.sv_markers_col.append(col_markers)
+        
+        # Store all artists
+        all_markers = [im] + self.sv_markers_diag
+        for row in self.sv_markers_row:
+            all_markers.extend(row)
+        for col in self.sv_markers_col:
+            all_markers.extend(col)
+        
+        return all_markers
+    
+    def update(self, frame: int, ax: Axes, artists: List[Artist]) -> List[Artist]:
+        """Update visualization for given frame."""
+        alphas = self.alphas_history[frame]["alphas"]
+        
+        # Update support vector indicators
+        for i, alpha in enumerate(alphas):
+            is_support_vector = abs(alpha) > 1e-10
+            
+            if is_support_vector:
+                # Diagonal marker - larger size for support vectors
+                marker_size = min(15, 5 + 10 * abs(alpha))
+                color = "yellow" if alpha > 0 else "cyan"
+                self.sv_markers_diag[i].set_markersize(marker_size)
+                self.sv_markers_diag[i].set_color(color)
+                
+                # Row/column markers - smaller size
+                small_marker_size = min(8, 3 + 5 * abs(alpha))
+                for marker in self.sv_markers_row[i]:
+                    marker.set_markersize(small_marker_size)
+                    marker.set_color(color)
+                for marker in self.sv_markers_col[i]:
+                    marker.set_markersize(small_marker_size)
+                    marker.set_color(color)
+            else:
+                # Hide markers for non-support vectors
+                self.sv_markers_diag[i].set_markersize(0)
+                for marker in self.sv_markers_row[i]:
+                    marker.set_markersize(0)
+                for marker in self.sv_markers_col[i]:
+                    marker.set_markersize(0)
+        
+        # Update title with iteration info
+        n_support = np.sum(np.abs(alphas) > 1e-10)
+        ax.set_title(
+            f"Kernel Matrix K(x_i, x_j) - Iteration {frame + 1}\n"
+            f"Support Vectors: {n_support}/{self.n_samples}"
+        )
+        
+        if self.debug_mode and frame % 10 == 0:
+            print(f"Frame {frame}: {n_support} support vectors")
+        
+        return artists
+
+
 # Factory method to create components
 def create_component(
     component_type: str,
@@ -299,6 +458,7 @@ def create_component(
     factories = {
         "decision_boundary": DecisionBoundaryFactory,
         "alpha_evolution": AlphaEvolutionFactory,
+        "kernel_matrix_heatmap": KernelMatrixHeatmapFactory,
     }
     
     if component_type not in factories:

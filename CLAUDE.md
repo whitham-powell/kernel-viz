@@ -149,18 +149,23 @@ Always prioritize fixing existing issues before adding new features.
   - base.py: AnimationComponent dataclass
   - visualizer.py: PerceptronVisualizer core class
   - core.py: Component creation methods (attached via monkey patching)
-- All 307 tests passing (306 passed, 1 xpassed)
+- Implemented kernel matrix heatmap animation using factory pattern as proof of concept:
+  - Created KernelMatrixHeatmapFactory in component_factory.py
+  - Shows kernel matrix as heatmap with animated support vector indicators
+  - Highlights rows/columns for active support vectors
+  - Includes comprehensive tests (12 tests, all passing)
+- All tests passing (319 total)
 
 ### Current Status
-- **Where we left off**: Completed visualization refactoring with a pragmatic approach
-- Component creation methods remain in core.py for now (tightly coupled with implementation details)
-- Uses monkey patching to maintain backward compatibility
+- **Where we left off**: Successfully implemented kernel matrix heatmap animation using factory pattern
+- Factory pattern proven as viable approach for future refactoring
+- New component integrates seamlessly with existing visualizer
 
 ### Next Priority Tasks
-1. Implement kernel matrix heatmap animation (static version exists)
-2. Add comprehensive tests for visualization components
+1. Add comprehensive tests for remaining visualization components
+2. Consider refactoring other component creation methods to use factory pattern
 3. Consider performance optimizations for kernel response surface
-4. Future: Consider further refactoring of component methods if they grow too large
+4. Future: Migrate all component creation to factory pattern based on successful proof of concept
 
 ## Memories
 
@@ -171,3 +176,4 @@ Always prioritize fixing existing issues before adding new features.
 - Assuming tests pass, commit is successful and documentation is updated and committed, push the changes to origin.
 - Using git commit -am"message" is helpful to recommit files changed by the pre-commit hooks.
 - You can run individual pre-commit hooks using "pre-commit run [hook-id] [options]" alternatively "uvx pre-commit run [hook-id] [options]"
+- Logs and loggers in the context of this project are for tracking algorithm state and kernel state rather than logging.Logger objects in the python standard library

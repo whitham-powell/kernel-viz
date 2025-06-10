@@ -762,9 +762,28 @@ def create_misclassification_tracker_component(
         )
 
 
+def create_kernel_matrix_heatmap_component(
+    self,
+    logs: Dict[str, Any],
+) -> AnimationComponent:
+    """Creates kernel matrix heatmap animation using the factory pattern.
+    
+    This is a new implementation using the factory pattern as a proof of concept
+    for future refactoring of other visualization components.
+    """
+    from .component_factory import KernelMatrixHeatmapFactory
+    
+    factory = KernelMatrixHeatmapFactory(logs, debug_mode=self.debug_mode)
+    return factory.create(
+        subplot_params={"gridspec": (1, 1)},
+        name="kernel_matrix_heatmap"
+    )
+
+
 # Attach component creation methods to PerceptronVisualizer
 PerceptronVisualizer.create_decision_boundary_component = create_decision_boundary_component
 PerceptronVisualizer.create_alpha_evolution_component = create_alpha_evolution_component
 PerceptronVisualizer.create_kernel_response_component = create_kernel_response_component
 PerceptronVisualizer.create_kernel_matrix_component = create_kernel_matrix_component
+PerceptronVisualizer.create_kernel_matrix_heatmap_component = create_kernel_matrix_heatmap_component
 PerceptronVisualizer.create_misclassification_tracker_component = create_misclassification_tracker_component

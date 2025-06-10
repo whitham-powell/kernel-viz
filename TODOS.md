@@ -38,7 +38,7 @@ These are mentioned in README.md but need implementation:
 
 ### Core Visualizations
 - [x] Complete kernel response component visualization (now shows full response surface with colorbar)
-- [ ] Implement kernel matrix heatmap visualization
+- [x] Implement kernel matrix heatmap visualization (using factory pattern as proof of concept)
 - [ ] Add tests for all visualization components
 
 ### Documentation
