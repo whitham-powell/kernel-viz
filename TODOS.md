@@ -42,10 +42,10 @@ These are mentioned in README.md but need implementation:
 - [x] Add tests for all visualization components (comprehensive test coverage added)
 
 ### Documentation
-- [ ] Add comprehensive unit tests for all kernels (beyond existing tests)
-- [ ] Add usage examples to documentation
-- [ ] Provide step-by-step instructions for running the code
-- [ ] Include mathematical derivations or references for kernelized methods
+- [x] Add comprehensive unit tests for all kernels (beyond existing tests) - Added test_kernels_comprehensive.py with 29 additional tests
+- [x] Add usage examples to documentation - Created docs/usage_examples.md with comprehensive examples
+- [x] Provide step-by-step instructions for running the code - Created docs/getting_started.md with detailed setup guide
+- [x] Include mathematical derivations or references for kernelized methods - Created docs/mathematical_background.md with theory and references
 
 ## Notes
 
