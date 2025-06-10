@@ -37,7 +37,7 @@ source .venv/bin/activate
 
 # To-Do
 - [ ] **Core Implementation**
-  - [ ] Juptyer notebook for kernelized perceptron usage examples
+  - [x] Juptyer notebook for kernelized perceptron usage examples
 
   - **Visualizations**
     - [x] Multiple component animations
