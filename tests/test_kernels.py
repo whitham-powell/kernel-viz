@@ -12,208 +12,112 @@ from kernel_viz.kernels import (
 )
 
 
-# TODO: Should parameterize these test for x and y datatypes (ints, floats, numpy arrays, etc.)?
-# TODO: Should we parameterize these test classes for each kernel function?
 class TestLinearKernel:
-    def test_basic_ints(self):
-        x = [1, 2]
-        y = [3, 4]
-        assert (
-            linear_kernel(x, y) == 11.0
-        ), f"Expected 11.0, but got {linear_kernel(x, y)}"
+    """Test linear kernel with various data types."""
 
-    def test_basic_floats(self):
-        x = [1.0, 2.0]
-        y = [3.0, 4.0]
-        assert (
-            linear_kernel(x, y) == 11.0
-        ), f"Expected 11.0, but got {linear_kernel(x, y)}"
-
-    def test_basic_mixed_floats_and_ints(self):
-        x = [1, 2]
-        y = [3.0, 4.0]
-        assert (
-            linear_kernel(x, y) == 11.0
-        ), f"Expected 11.0, but got {linear_kernel(x, y)}"
-
-    def test_basic_numpy_ints(self):
-        x = np.array([1, 2])
-        y = np.array([3, 4])
-        assert (
-            linear_kernel(x, y) == 11.0
-        ), f"Expected 11.0, but got {linear_kernel(x, y)}"
-
-    def test_basic_numpy_floats(self):
-        x = np.array([1.0, 2.0])
-        y = np.array([3.0, 4.0])
-        assert (
-            linear_kernel(x, y) == 11.0
-        ), f"Expected 11.0, but got {linear_kernel(x, y)}"
-
-    def test_basic_numpy_mixed_floats_and_ints(self):
-        x = np.array([1, 2])
-        y = np.array([3.0, 4.0])
-        assert (
-            linear_kernel(x, y) == 11.0
-        ), f"Expected 11.0, but got {linear_kernel(x, y)}"
+    @pytest.mark.parametrize(
+        "x, y, expected",
+        [
+            # Lists with ints
+            ([1, 2], [3, 4], 11.0),
+            # Lists with floats
+            ([1.0, 2.0], [3.0, 4.0], 11.0),
+            # Mixed lists
+            ([1, 2], [3.0, 4.0], 11.0),
+            # NumPy arrays with ints
+            (np.array([1, 2]), np.array([3, 4]), 11.0),
+            # NumPy arrays with floats
+            (np.array([1.0, 2.0]), np.array([3.0, 4.0]), 11.0),
+            # Mixed NumPy arrays
+            (np.array([1, 2]), np.array([3.0, 4.0]), 11.0),
+        ],
+        ids=[
+            "list_ints",
+            "list_floats",
+            "list_mixed",
+            "numpy_ints",
+            "numpy_floats",
+            "numpy_mixed",
+        ],
+    )
+    def test_linear_kernel_various_types(self, x, y, expected):
+        """Test linear kernel computation with different data types."""
+        result = linear_kernel(x, y)
+        assert result == expected, f"Expected {expected}, but got {result}"
 
 
 class TestAffineKernel:
-    def test_basic_ints_with_default_c(self):
-        x = [1, 2]
-        y = [3, 4]
-        expected = 1 * 3 + 2 * 4 + 1.0
-        assert (
-            affine_kernel(x, y) == expected
-        ), f"Expected {expected}, but got {affine_kernel(x, y)}"
+    """Test affine kernel with various data types and parameters."""
 
-    def test_basic_floats_with_default_c(self):
-        x = [1.0, 2.0]
-        y = [3.0, 4.0]
-        expected = 1.0 * 3.0 + 2.0 * 4.0 + 1.0
-        assert (
-            affine_kernel(x, y) == expected
-        ), f"Expected {expected}, but got {affine_kernel(x, y)}"
+    @pytest.mark.parametrize(
+        "x, y, c, expected",
+        [
+            # Default c (1.0)
+            ([1, 2], [3, 4], None, 12.0),  # 11 + 1
+            ([1.0, 2.0], [3.0, 4.0], None, 12.0),
+            ([1, 2], [3.0, 4.0], None, 12.0),
+            (np.array([1, 2]), np.array([3, 4]), None, 12.0),
+            (np.array([1.0, 2.0]), np.array([3.0, 4.0]), None, 12.0),
+            (np.array([1, 2]), np.array([3.0, 4.0]), None, 12.0),
+            # c = 2
+            ([1, 2], [3, 4], 2, 13.0),  # 11 + 2
+            ([1.0, 2.0], [3.0, 4.0], 2.0, 13.0),
+            ([1, 2], [3.0, 4.0], 2, 13.0),
+            (np.array([1, 2]), np.array([3, 4]), 2, 13.0),
+            (np.array([1.0, 2.0]), np.array([3.0, 4.0]), 2.0, 13.0),
+            (np.array([1, 2]), np.array([3.0, 4.0]), 2, 13.0),
+        ],
+        ids=[
+            "list_ints_default_c",
+            "list_floats_default_c",
+            "list_mixed_default_c",
+            "numpy_ints_default_c",
+            "numpy_floats_default_c",
+            "numpy_mixed_default_c",
+            "list_ints_c2",
+            "list_floats_c2",
+            "list_mixed_c2",
+            "numpy_ints_c2",
+            "numpy_floats_c2",
+            "numpy_mixed_c2",
+        ],
+    )
+    def test_affine_kernel_various_types(self, x, y, c, expected):
+        """Test affine kernel computation with different data types and c values."""
+        if c is None:
+            result = affine_kernel(x, y)
+        else:
+            result = affine_kernel(x, y, c)
+        assert result == expected, f"Expected {expected}, but got {result}"
 
-    def test_basic_mixed_floats_and_ints_with_default_c(self):
-        x = [1, 2]
-        y = [3.0, 4.0]
-        expected = 1 * 3.0 + 2 * 4.0 + 1.0
-        assert (
-            affine_kernel(x, y) == expected
-        ), f"Expected {expected}, but got {affine_kernel(x, y)}"
-
-    def test_basic_numpy_ints_with_default_c(self):
-        x = np.array([1, 2])
-        y = np.array([3, 4])
-        expected = 1 * 3 + 2 * 4 + 1.0
-        assert (
-            affine_kernel(x, y) == expected
-        ), f"Expected {expected}, but got {affine_kernel(x, y)}"
-
-    def test_basic_numpy_floats_with_default_c(self):
-        x = np.array([1.0, 2.0])
-        y = np.array([3.0, 4.0])
-        expected = 1.0 * 3.0 + 2.0 * 4.0 + 1.0
-        assert (
-            affine_kernel(x, y) == expected
-        ), f"Expected {expected}, but got {affine_kernel(x, y)}"
-
-    def test_basic_numpy_mixed_floats_and_ints_with_default_c(self):
-        x = np.array([1, 2])
-        y = np.array([3.0, 4.0])
-        expected = 1 * 3.0 + 2 * 4.0 + 1.0
-        assert (
-            affine_kernel(x, y) == expected
-        ), f"Expected {expected}, but got {affine_kernel(x, y)}"
-
-    def test_basic_ints_with_c_equals_2(self):
-        x = [1, 2]
-        y = [3, 4]
-        c = 2
-        expected = (1 * 3 + 2 * 4) + c
-        assert (
-            affine_kernel(x, y, c) == expected
-        ), f"Expected {expected}, but got {affine_kernel(x, y)}"
-
-    def test_basic_floats_with_c_equals_2(self):
-        x = [1.0, 2.0]
-        y = [3.0, 4.0]
-        c = 2.0
-        expected = (1 * 3 + 2 * 4) + c
-        assert (
-            affine_kernel(x, y, c) == expected
-        ), f"Expected {expected}, but got {affine_kernel(x, y, c)}"
-
-    def test_basic_mixed_floats_and_ints_with_c_equals_2(self):
-        x = [1, 2]
-        y = [3.0, 4.0]
-        c = 2
-        expected = (1 * 3.0 + 2 * 4.0) + c
-        assert (
-            affine_kernel(x, y, c) == expected
-        ), f"Expected {expected}, but got {affine_kernel(x, y, c)}"
-
-    def test_basic_numpy_ints_with_c_equals_2(self):
-        x = np.array([1, 2])
-        y = np.array([3, 4])
-        c = 2
-        expected = (1 * 3 + 2 * 4) + c
-        assert (
-            affine_kernel(x, y, c) == expected
-        ), f"Expected {expected}, but got {affine_kernel(x, y, c)}"
-
-    def test_basic_numpy_floats_with_c_equals_2(self):
-        x = np.array([1.0, 2.0])
-        y = np.array([3.0, 4.0])
-        c = 2.0
-        expected = (1.0 * 3.0 + 2.0 * 4.0) + c
-        assert (
-            affine_kernel(x, y, c) == expected
-        ), f"Expected {expected}, but got {affine_kernel(x, y, c)}"
-
-    def test_basic_numpy_mixed_floats_and_ints_with_c_equals_2(self):
-        x = np.array([1, 2])
-        y = np.array([3.0, 4.0])
-        c = 2
-        expected = (1 * 3.0 + 2 * 4.0) + c
-        assert (
-            affine_kernel(x, y, c) == expected
-        ), f"Expected {expected}, but got {affine_kernel(x, y, c)}"
-
-    def test_affine_kernel_with_c_0_is_linear_kernel_ints(self):
-        x = [1, 2]
-        y = [3, 4]
+    @pytest.mark.parametrize(
+        "x, y",
+        [
+            ([1, 2], [3, 4]),
+            ([1.0, 2.0], [3.0, 4.0]),
+            ([1, 2], [3.0, 4.0]),
+            (np.array([1, 2]), np.array([3, 4])),
+            (np.array([1.0, 2.0]), np.array([3.0, 4.0])),
+            (np.array([1, 2]), np.array([3.0, 4.0])),
+        ],
+        ids=[
+            "list_ints",
+            "list_floats",
+            "list_mixed",
+            "numpy_ints",
+            "numpy_floats",
+            "numpy_mixed",
+        ],
+    )
+    def test_affine_kernel_with_c_0_equals_linear_kernel(self, x, y):
+        """Test that affine kernel with c=0 equals linear kernel."""
         c = 0
-        assert affine_kernel(x, y, c) == linear_kernel(
-            x,
-            y,
-        ), f"Expected {linear_kernel(x, y)}, but got {affine_kernel(x, y, c)}"
-
-    def test_affine_kernel_with_c_0_is_linear_kernel_floats(self):
-        x = [1.0, 2.0]
-        y = [3.0, 4.0]
-        c = 0
-        assert affine_kernel(x, y, c) == linear_kernel(
-            x,
-            y,
-        ), f"Expected {linear_kernel(x, y)}, but got {affine_kernel(x, y, c)}"
-
-    def test_affine_kernel_with_c_0_is_linear_kernel_mixed(self):
-        x = [1, 2]
-        y = [3.0, 4.0]
-        c = 0
-        assert affine_kernel(x, y, c) == linear_kernel(
-            x,
-            y,
-        ), f"Expected {linear_kernel(x, y)}, but got {affine_kernel(x, y, c)}"
-
-    def test_affine_kernel_with_c_0_is_linear_kernel_numpy_ints(self):
-        x = np.array([1, 2])
-        y = np.array([3, 4])
-        c = 0
-        assert affine_kernel(x, y, c) == linear_kernel(
-            x,
-            y,
-        ), f"Expected {linear_kernel(x, y)}, but got {affine_kernel(x, y, c)}"
-
-    def test_affine_kernel_with_c_0_is_linear_kernel_numpy_floats(self):
-        x = np.array([1.0, 2.0])
-        y = np.array([3.0, 4.0])
-        c = 0
-        assert affine_kernel(x, y, c) == linear_kernel(
-            x,
-            y,
-        ), f"Expected {linear_kernel(x, y)}, but got {affine_kernel(x, y, c)}"
-
-    def test_affine_kernel_with_c_0_is_linear_kernel_numpy_mixed(self):
-        x = np.array([1, 2])
-        y = np.array([3.0, 4.0])
-        c = 0
-        assert affine_kernel(x, y, c) == linear_kernel(
-            x,
-            y,
-        ), f"Expected {linear_kernel(x, y)}, but got {affine_kernel(x, y, c)}"
+        affine_result = affine_kernel(x, y, c)
+        linear_result = linear_kernel(x, y)
+        assert affine_result == linear_result, (
+            f"affine_kernel with c=0 should equal linear_kernel. "
+            f"Got {affine_result} vs {linear_result}"
+        )
 
 
 class TestQuadraticKernel:
