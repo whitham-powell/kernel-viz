@@ -325,23 +325,39 @@ class TestKernelResponseComponent:
         assert isinstance(component.subplot_params["gridspec"], tuple)
 
     def test_initial_visualization(self, sample_logs):
-        """Test that the kernel response component is properly configured."""
-
-        # Create the visualization component
+        """Test initial visualization state and artist setup."""
         visualizer = PerceptronVisualizer()
         component = visualizer.create_kernel_response_component(sample_logs)
 
-        # Validate the component setup behavior
-        # Ensure that the component is prepared to handle the required elements
+        # Create test figure and set up the component
+        fig, ax = plt.subplots()
+        artists = component.setup_func(ax)
+
+        # Verify we have the expected artists
         assert (
-            "contourf" in component.setup_func.__code__.co_names
-        ), "setup_func does not define contourf for surface plot"
+            len(artists) == 4
+        ), "Expected 4 artists: decision_boundary, confidence_regions, points_pos, points_neg"
+
+        # Check for contour and scatter but NOT colorbar
+        assert any(
+            isinstance(artist, QuadContourSet) for artist in ax.collections
+        ), "Expected contour plot"
+        scatter_artists = [
+            artist for artist in ax.collections if isinstance(artist, PathCollection)
+        ]
         assert (
-            "scatter" in component.setup_func.__code__.co_names
-        ), "setup_func does not define scatter for points"
-        assert (
-            "colorbar" in component.setup_func.__code__.co_names
-        ), "setup_func does not define colorbar addition"
+            len(scatter_artists) == 2
+        ), "Expected 2 scatter plots (pos and neg points)"
+
+        # Verify no colorbar
+        assert ax.figure.axes == [ax], "Expected only one axes (no colorbar)"
+
+        # Check title and labels
+        assert "Decision Boundary Evolution" in ax.get_title()
+        assert ax.get_xlabel() == "Feature 1"
+        assert ax.get_ylabel() == "Feature 2"
+
+        plt.close(fig)
 
     @pytest.mark.parametrize("frame", [0, 1, 2])
     def test_frame_updates(self, frame, sample_logs):
@@ -365,24 +381,35 @@ class TestKernelResponseComponent:
 
         # Verify the updated title reflects the current frame
         assert (
-            ax.get_title() == f"Kernel Response Surface - Iteration {frame + 1}"
+            ax.get_title() == f"Decision Boundary - Iteration {frame + 1}"
         ), "Frame title mismatch"
 
         # Verify the number of artists remains consistent after the update
         assert len(updated_artists) == len(
             initial_artists,
         ), "Number of artists should remain consistent after update"
+        assert len(updated_artists) == 4, "Expected 4 artists after update"
 
-        # Check the surface and contour updates
-        updated_surface = updated_artists[0]
+        # The artists are: [decision_boundary, confidence_regions, points_pos, points_neg]
+        decision_boundary, confidence_regions, points_pos, points_neg = updated_artists
+
+        # Verify types
         assert isinstance(
-            updated_surface,
+            decision_boundary,
             QuadContourSet,
-        ), "Updated surface should be a QuadContourSet"
-        assert updated_surface.collections, "Updated surface should have collections"
-
-        # Extract positive and negative scatter points
-        points_pos, points_neg = updated_artists[1], updated_artists[2]
+        ), "First artist should be decision boundary contour"
+        assert isinstance(
+            confidence_regions,
+            QuadContourSet,
+        ), "Second artist should be confidence regions"
+        assert isinstance(
+            points_pos,
+            PathCollection,
+        ), "Third artist should be positive points scatter"
+        assert isinstance(
+            points_neg,
+            PathCollection,
+        ), "Fourth artist should be negative points scatter"
 
         # Validate number of scatter points
         true_labels = sample_logs["true_labels"]
@@ -398,70 +425,91 @@ class TestKernelResponseComponent:
             f"expected {negative_count}, got {len(points_neg.get_offsets())}"
         )
 
-        # Validate colors reflect active/inactive states based on alphas
-        alphas = sample_logs["alphas"][frame]["alphas"]
-
-        # Active/inactive colors for positive points
-        expected_positive_colors = [
-            "red" if abs(alpha) > 1e-10 else "gray"
-            for alpha in alphas[true_labels == 1]
-        ]
+        # Validate that points have fixed face colors (blue for positive, red for negative)
         positive_colors = points_pos.get_facecolors()
-        assert len(positive_colors) == positive_count, "Positive color count mismatch"
-        for actual_color, expected_color in zip(
-            positive_colors,
-            expected_positive_colors,
-        ):
-            target_color = [1, 0, 0] if expected_color == "red" else [0.5, 0.5, 0.5]
-            assert np.allclose(
-                actual_color[:3],
-                target_color,
-                atol=1e-2,
-            ), f"Positive scatter point color mismatch: expected {target_color}, got {actual_color[:3]}"
-
-        # Active/inactive colors for negative points
-        expected_negative_colors = [
-            "red" if abs(alpha) > 1e-10 else "gray"
-            for alpha in alphas[true_labels == -1]
-        ]
         negative_colors = points_neg.get_facecolors()
-        assert len(negative_colors) == negative_count, "Negative color count mismatch"
-        for actual_color, expected_color in zip(
-            negative_colors,
-            expected_negative_colors,
-        ):
-            target_color = [1, 0, 0] if expected_color == "red" else [0.5, 0.5, 0.5]
+
+        # Check positive points are blue
+        if positive_colors.ndim == 2 and positive_colors.shape[0] == 1:
+            # Single color for all points
             assert np.allclose(
-                actual_color[:3],
-                target_color,
+                positive_colors[0, :3],
+                [0, 0, 1],
                 atol=1e-2,
-            ), f"Negative scatter point color mismatch: expected {target_color}, got {actual_color[:3]}"
+            ), f"Expected blue for positive points, got {positive_colors[0, :3]}"
+        else:
+            # Multiple colors (shouldn't happen with current implementation)
+            for color in positive_colors:
+                assert np.allclose(
+                    color[:3],
+                    [0, 0, 1],
+                    atol=1e-2,
+                ), f"Expected blue for positive points, got {color[:3]}"
+
+        # Check negative points are red
+        if negative_colors.ndim == 2 and negative_colors.shape[0] == 1:
+            # Single color for all points
+            assert np.allclose(
+                negative_colors[0, :3],
+                [1, 0, 0],
+                atol=1e-2,
+            ), f"Expected red for negative points, got {negative_colors[0, :3]}"
+        else:
+            # Multiple colors (shouldn't happen with current implementation)
+            for color in negative_colors:
+                assert np.allclose(
+                    color[:3],
+                    [1, 0, 0],
+                    atol=1e-2,
+                ), f"Expected red for negative points, got {color[:3]}"
+
+        # Validate support vectors are highlighted with larger size and yellow edge
+        alphas = sample_logs["alphas"][frame]["alphas"]
+        sizes_pos = points_pos.get_sizes()
+        sizes_neg = points_neg.get_sizes()
+        # Edge colors are set in the visualization but not checked in this test
+        # points_pos.get_edgecolors() and points_neg.get_edgecolors() would show
+        # yellow for support vectors and black for non-support vectors
+
+        # Check support vector highlighting for positive points
+        active_pos = np.abs(alphas[true_labels == 1]) > 1e-10
+        expected_sizes_pos = [200 if active else 100 for active in active_pos]
+        assert np.array_equal(
+            sizes_pos,
+            expected_sizes_pos,
+        ), "Positive point sizes incorrect"
+
+        # Check support vector highlighting for negative points
+        active_neg = np.abs(alphas[true_labels == -1]) > 1e-10
+        expected_sizes_neg = [200 if active else 100 for active in active_neg]
+        assert np.array_equal(
+            sizes_neg,
+            expected_sizes_neg,
+        ), "Negative point sizes incorrect"
 
         plt.close(fig)
 
-    # Kernel Response specific tests
-    def test_response_surface_normalization(self, sample_logs):
-        """Test that kernel response values are properly normalized."""
+    # Decision Boundary specific tests
+    def test_decision_boundary_exists(self, sample_logs):
+        """Test that decision boundary is properly computed and displayed."""
         visualizer = PerceptronVisualizer()
         component = visualizer.create_kernel_response_component(sample_logs)
 
         fig, ax = plt.subplots()
         artists = component.setup_func(ax)
 
-        # Check normalization across multiple frames
+        # Check decision boundary across multiple frames
         for frame in range(len(sample_logs["alphas"])):
             updated_artists = component.update_func(frame, ax, artists)
-            surface = next(
-                artist
-                for artist in updated_artists
-                if isinstance(artist, QuadContourSet)
-            )
-            response_values = surface.get_array()
+            decision_boundary = updated_artists[0]
 
-            # Verify normalization
-            assert np.all(response_values >= 0) and np.all(response_values <= 1)
-            # Check for reasonable range
-            assert np.ptp(response_values) > 0.1  # At least some variation
+            # Verify it's a contour plot
+            assert isinstance(decision_boundary, QuadContourSet)
+
+            # Decision boundary should have only level 0
+            if hasattr(decision_boundary, "levels"):
+                assert len(decision_boundary.levels) == 1
+                assert decision_boundary.levels[0] == 0
 
         plt.close(fig)
 
@@ -482,60 +530,65 @@ class TestKernelResponseComponent:
             updated_artists = component.update_func(frame, ax, artists)
 
             # Get scatter points for positive and negative labels
-            points_pos, points_neg = updated_artists[1], updated_artists[2]
+            # Artists are: [decision_boundary, confidence_regions, points_pos, points_neg]
+            points_pos, points_neg = updated_artists[2], updated_artists[3]
 
             # Extract active/inactive states from alphas
             alphas = sample_logs["alphas"][frame]["alphas"]
             active_positive = np.abs(alphas[positive_indices]) > 1e-10
             active_negative = np.abs(alphas[negative_indices]) > 1e-10
 
-            # Get colors for positive and negative points
-            positive_colors = points_pos.get_facecolor()
-            negative_colors = points_neg.get_facecolor()
+            # Get edge colors for positive and negative points (support vectors have yellow edges)
+            positive_edge_colors = points_pos.get_edgecolors()
+            negative_edge_colors = points_neg.get_edgecolors()
 
-            # Ensure number of colors matches number of points
-            assert len(positive_colors) == len(positive_indices), (
+            # Ensure number of points matches
+            assert len(positive_edge_colors) == len(positive_indices), (
                 f"Mismatch in number of positive scatter points: "
-                f"expected {len(positive_indices)}, got {len(positive_colors)}"
+                f"expected {len(positive_indices)}, got {len(positive_edge_colors)}"
             )
-            assert len(negative_colors) == len(negative_indices), (
+            assert len(negative_edge_colors) == len(negative_indices), (
                 f"Mismatch in number of negative scatter points: "
-                f"expected {len(negative_indices)}, got {len(negative_colors)}"
+                f"expected {len(negative_indices)}, got {len(negative_edge_colors)}"
             )
 
-            # Validate colors based on active/inactive states
-            for color, is_active in zip(positive_colors, active_positive):
+            # Validate edge colors based on active/inactive states (yellow for support vectors)
+            for edge_color, is_active in zip(positive_edge_colors, active_positive):
                 if is_active:
+                    # Yellow edge for support vectors
                     assert np.allclose(
-                        color[:3],
-                        [1, 0, 0],
+                        edge_color[:3],
+                        [1, 1, 0],  # Yellow in RGB
                         atol=1e-2,
-                    ), f"Expected red for active positive point, got {color[:3]}"
+                    ), f"Expected yellow edge for active positive point, got {edge_color[:3]}"
                 else:
+                    # Black edge for non-support vectors
                     assert np.allclose(
-                        color[:3],
-                        [0.5, 0.5, 0.5],
+                        edge_color[:3],
+                        [0, 0, 0],  # Black in RGB
                         atol=1e-2,
-                    ), f"Expected gray for inactive positive point, got {color[:3]}"
+                    ), f"Expected black edge for inactive positive point, got {edge_color[:3]}"
 
-            for color, is_active in zip(negative_colors, active_negative):
+            for edge_color, is_active in zip(negative_edge_colors, active_negative):
                 if is_active:
+                    # Yellow edge for support vectors
                     assert np.allclose(
-                        color[:3],
-                        [1, 0, 0],
+                        edge_color[:3],
+                        [1, 1, 0],  # Yellow in RGB
                         atol=1e-2,
-                    ), f"Expected red for active negative point, got {color[:3]}"
+                    ), f"Expected yellow edge for active negative point, got {edge_color[:3]}"
                 else:
+                    # Black edge for non-support vectors
                     assert np.allclose(
-                        color[:3],
-                        [0.5, 0.5, 0.5],
+                        edge_color[:3],
+                        [0, 0, 0],  # Black in RGB
                         atol=1e-2,
-                    ), f"Expected gray for inactive negative point, got {color[:3]}"
+                    ), f"Expected black edge for inactive negative point, got {edge_color[:3]}"
 
         plt.close(fig)
 
     def test_contour_levels(self, sample_logs):
-        """Test that contour levels are appropriate and consistent."""
+        """Test that contour levels are appropriate for decision boundary."""
         visualizer = PerceptronVisualizer()
         component = visualizer.create_kernel_response_component(sample_logs)
 
@@ -543,22 +596,22 @@ class TestKernelResponseComponent:
         artists = component.setup_func(ax)
         updated_artists = component.update_func(0, ax, artists)
 
-        # Get contour set
-        contours = next(
-            artist for artist in updated_artists if isinstance(artist, QuadContourSet)
-        )
+        # Get decision boundary contour
+        decision_boundary = updated_artists[0]
+        assert isinstance(decision_boundary, QuadContourSet)
 
-        # Verify contour properties
-        assert len(contours.levels) >= 10, "Expected at least 10 contour levels"
-        assert (
-            0 <= contours.levels[0] <= 1
-        ), "Expected lowest contour level to be in [0, 1]"
-        assert (
-            0 <= contours.levels[-1] <= 1
-        ), "Expected highest contour level to be in [0, 1]"
-        assert (
-            0 in contours.levels
-        ), "Expected decision boundary (level 0) to be present"
+        # Decision boundary should only have level 0
+        if hasattr(decision_boundary, "levels"):
+            assert (
+                len(decision_boundary.levels) == 1
+            ), "Expected only 1 contour level (decision boundary)"
+            assert (
+                decision_boundary.levels[0] == 0
+            ), "Expected decision boundary at level 0"
+
+        # Get confidence regions
+        confidence_regions = updated_artists[1]
+        assert isinstance(confidence_regions, QuadContourSet)
 
         plt.close(fig)
 
@@ -584,18 +637,12 @@ class TestKernelResponseComponent:
         artists = component.setup_func(ax)
         updated_artists = component.update_func(0, ax, artists)
 
-        # Verify surface properties for different kernels
+        # Verify we can create decision boundaries with different kernels
         surface = next(
             artist for artist in updated_artists if isinstance(artist, QuadContourSet)
         )
-        response_values = surface.get_array()
-
-        # Check response range is normalized
-        atol = 1e-12  # Allow small tolerance for floating-point errors
-        assert np.all(
-            response_values >= -atol,
-        ), "Response values contain unexpected negatives"
-        assert np.all(response_values <= 1), "Response values exceed 1"
+        assert isinstance(surface, QuadContourSet)
+        # No specific range check needed - decision values can be any real number
 
         plt.close(fig)
 
