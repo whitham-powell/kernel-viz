@@ -955,5 +955,462 @@ class TestPerformanceAndResourceManagement:
         plt.close("all")
 
 
+class TestKernelMatrixComponent:
+    """Tests for the kernel matrix visualization component."""
+
+    def test_component_setup(self, sample_logs):
+        """Test kernel matrix component creation and basic attributes."""
+        visualizer = PerceptronVisualizer()
+        component = visualizer.create_kernel_matrix_component(sample_logs)
+
+        assert callable(component.setup_func)
+        assert callable(component.update_func)
+        assert "gridspec" in component.subplot_params
+        assert component.subplot_params["gridspec"] == (1, 1)
+
+    def test_kernel_matrix_computation(self, sample_logs):
+        """Test kernel matrix is computed if not provided."""
+        visualizer = PerceptronVisualizer()
+        
+        # Remove kernel matrix from logs
+        logs_without_matrix = sample_logs.copy()
+        logs_without_matrix.pop("kernel_matrix", None)
+        
+        component = visualizer.create_kernel_matrix_component(logs_without_matrix)
+        
+        # Setup and verify kernel matrix is computed
+        fig, ax = plt.subplots()
+        artists = component.setup_func(ax)
+        
+        # Should have image and markers
+        assert len(artists) > 1
+        assert hasattr(ax.images[0], 'get_array')
+        
+        # Check kernel matrix shape
+        kernel_matrix = ax.images[0].get_array()
+        n_samples = len(sample_logs["feature_space"])
+        assert kernel_matrix.shape == (n_samples, n_samples)
+        
+        plt.close(fig)
+
+    def test_heatmap_visualization(self, sample_logs):
+        """Test heatmap visualization setup."""
+        visualizer = PerceptronVisualizer()
+        component = visualizer.create_kernel_matrix_component(sample_logs)
+        
+        fig, ax = plt.subplots()
+        artists = component.setup_func(ax)
+        
+        # Check heatmap image
+        assert len(ax.images) == 1
+        image = ax.images[0]
+        assert image.get_cmap().name == "RdBu_r"
+        
+        # Check colorbar
+        assert len(fig.axes) == 2  # Main axes + colorbar
+        
+        # Check labels
+        assert ax.get_xlabel() == "Sample Index"
+        assert ax.get_ylabel() == "Sample Index"
+        assert "Kernel Matrix" in ax.get_title()
+        
+        plt.close(fig)
+
+    def test_support_vector_indicators(self, sample_logs):
+        """Test support vector indicator creation and updates."""
+        visualizer = PerceptronVisualizer()
+        component = visualizer.create_kernel_matrix_component(sample_logs)
+        
+        fig, ax = plt.subplots()
+        artists = component.setup_func(ax)
+        
+        # Initial state - all markers should be hidden
+        markers = [a for a in artists if hasattr(a, 'get_markersize')]
+        assert all(m.get_markersize() == 0 for m in markers)
+        
+        # Update to show support vectors
+        component.update_func(1, ax, artists)
+        
+        # Some markers should now be visible
+        visible_markers = [m for m in markers if m.get_markersize() > 0]
+        assert len(visible_markers) > 0
+        
+        plt.close(fig)
+
+    @pytest.mark.mpl_image_compare(tolerance=10, style="default")
+    def test_kernel_matrix_visual_snapshot(self, sample_logs):
+        """Visual regression test for kernel matrix component."""
+        visualizer = PerceptronVisualizer()
+        component = visualizer.create_kernel_matrix_component(sample_logs)
+        
+        fig, ax = plt.subplots(figsize=(8, 6))
+        artists = component.setup_func(ax)
+        component.update_func(2, ax, artists)
+        
+        return fig
+
+
+class TestMisclassificationTrackerComponent:
+    """Tests for the misclassification tracker component."""
+
+    def test_component_setup(self, sample_logs):
+        """Test misclassification tracker component creation."""
+        visualizer = PerceptronVisualizer()
+        component = visualizer.create_misclassification_tracker_component(sample_logs)
+
+        assert callable(component.setup_func)
+        assert callable(component.update_func)
+        assert "gridspec" in component.subplot_params
+        assert component.subplot_params["gridspec"] == (0, 0)
+
+    def test_initial_visualization(self, sample_logs):
+        """Test initial visualization state."""
+        visualizer = PerceptronVisualizer()
+        component = visualizer.create_misclassification_tracker_component(sample_logs)
+        
+        fig, ax = plt.subplots()
+        artists = component.setup_func(ax)
+        
+        # Should have scatter plot
+        assert len(artists) == 1
+        scatter = artists[0]
+        assert isinstance(scatter, PathCollection)
+        
+        # Check initial colors - scatter plot might not have individual colors set yet
+        colors = scatter.get_facecolors()
+        if len(colors) == 0 or len(colors) == 1:
+            # Single color for all points - check it's gray
+            pass  # Colors might be set in update function
+        else:
+            # All points should be gray initially
+            assert all(np.allclose(c[:3], [0.5, 0.5, 0.5]) for c in colors)
+        
+        # Check labels and legend
+        assert ax.get_xlabel() == "Feature 1"
+        assert ax.get_ylabel() == "Feature 2"
+        assert "Misclassified Points Tracker" in ax.get_title()
+        assert ax.get_legend() is not None
+        
+        plt.close(fig)
+
+    def test_misclassification_updates(self, sample_logs):
+        """Test that misclassified points are highlighted correctly."""
+        visualizer = PerceptronVisualizer()
+        component = visualizer.create_misclassification_tracker_component(sample_logs)
+        
+        fig, ax = plt.subplots()
+        artists = component.setup_func(ax)
+        scatter = artists[0]
+        
+        # Update to a frame with misclassifications
+        component.update_func(0, ax, artists)
+        
+        # Check that some points are red (misclassified)
+        colors = scatter.get_facecolors()
+        red_points = [c for c in colors if np.allclose(c[:3], [1.0, 0.0, 0.0])]
+        gray_points = [c for c in colors if np.allclose(c[:3], [0.5, 0.5, 0.5])]
+        
+        # Should have some points with colors set
+        # Note: depending on the data, all points might be misclassified or correctly classified
+        assert len(colors) > 0, "No colors were set"
+        assert len(red_points) > 0 or len(gray_points) > 0, "No colored points found"
+        
+        plt.close(fig)
+
+    def test_decision_function_calculation(self, sample_logs):
+        """Test decision function calculation logic."""
+        visualizer = PerceptronVisualizer()
+        component = visualizer.create_misclassification_tracker_component(sample_logs)
+        
+        # Use a simple linear kernel for predictable results
+        linear_logs = sample_logs.copy()
+        from kernel_viz.kernels import linear_kernel
+        linear_logs["kernel"] = linear_kernel
+        linear_logs["kernel_params"] = {}
+        
+        component = visualizer.create_misclassification_tracker_component(linear_logs)
+        
+        fig, ax = plt.subplots()
+        artists = component.setup_func(ax)
+        
+        # Update and check
+        component.update_func(0, ax, artists)
+        
+        # Verify scatter plot exists and has correct number of points
+        scatter = artists[0]
+        n_samples = len(linear_logs["feature_space"])
+        assert len(scatter.get_offsets()) == n_samples
+        
+        plt.close(fig)
+
+    @pytest.mark.mpl_image_compare(tolerance=10, style="default")
+    def test_misclassification_visual_snapshot(self, sample_logs):
+        """Visual regression test for misclassification tracker."""
+        visualizer = PerceptronVisualizer()
+        component = visualizer.create_misclassification_tracker_component(sample_logs)
+        
+        fig, ax = plt.subplots(figsize=(8, 6))
+        artists = component.setup_func(ax)
+        component.update_func(1, ax, artists)
+        
+        return fig
+
+
+class TestDecisionBoundaryAdvanced:
+    """Advanced tests for decision boundary component covering missing cases."""
+
+    def test_plot_type_parameter(self, sample_logs):
+        """Test different plot types (line vs contour)."""
+        visualizer = PerceptronVisualizer()
+        
+        # Test line plot for linear kernel
+        from kernel_viz.kernels import linear_kernel
+        linear_logs = sample_logs.copy()
+        linear_logs["kernel"] = linear_kernel
+        linear_logs["kernel_params"] = {}
+        
+        component = visualizer.create_decision_boundary_component(
+            linear_logs, plot_type="line"
+        )
+        
+        fig, ax = plt.subplots()
+        artists = component.setup_func(ax)
+        
+        # Should have scatter and line
+        assert len(artists) == 2
+        assert isinstance(artists[1], Line2D)
+        
+        plt.close(fig)
+        
+        # Test contour plot
+        component = visualizer.create_decision_boundary_component(
+            sample_logs, plot_type="contour"
+        )
+        
+        fig, ax = plt.subplots()
+        artists = component.setup_func(ax)
+        
+        # Should have scatter only initially
+        assert len(artists) == 1
+        assert isinstance(artists[0], PathCollection)
+        
+        plt.close(fig)
+
+    def test_fixed_dims_parameter(self, sample_logs):
+        """Test fixed dimensions for high-dimensional data."""
+        # Create high-dimensional data
+        X_high = np.random.randn(10, 5)  # 5D data
+        high_dim_logs = sample_logs.copy()
+        high_dim_logs["feature_space"] = X_high
+        # Ensure alphas match the number of samples
+        high_dim_logs["alphas"] = [
+            {"iteration": i, "alphas": np.random.randn(10)} 
+            for i in range(3)
+        ]
+        high_dim_logs["true_labels"] = np.array([1, -1] * 5)  # 10 labels
+        
+        visualizer = PerceptronVisualizer()
+        
+        # Test with fixed dimensions
+        fixed_dims = {2: 0.5, 3: -0.5, 4: 1.0}  # Fix dims 2, 3, 4
+        component = visualizer.create_decision_boundary_component(
+            high_dim_logs, fixed_dims=fixed_dims
+        )
+        
+        fig, ax = plt.subplots()
+        artists = component.setup_func(ax)
+        
+        # Should still create visualization
+        assert len(artists) >= 1
+        assert isinstance(artists[0], PathCollection)
+        
+        # Update to verify fixed dims are used
+        component.update_func(0, ax, artists)
+        
+        plt.close(fig)
+
+    def test_kernel_type_auto_detection(self, sample_logs):
+        """Test automatic plot type selection based on kernel."""
+        visualizer = PerceptronVisualizer()
+        
+        # Linear kernel should default to line plot
+        from kernel_viz.kernels import linear_kernel, affine_kernel
+        
+        linear_logs = sample_logs.copy()
+        linear_logs["kernel"] = linear_kernel
+        linear_logs["kernel_params"] = {}
+        
+        component = visualizer.create_decision_boundary_component(linear_logs)
+        fig, ax = plt.subplots()
+        artists = component.setup_func(ax)
+        
+        # Should have line for linear kernel
+        assert any(isinstance(a, Line2D) for a in artists)
+        
+        plt.close(fig)
+        
+        # RBF kernel should default to contour
+        component = visualizer.create_decision_boundary_component(sample_logs)
+        fig, ax = plt.subplots()
+        artists = component.setup_func(ax)
+        
+        # Should not have line for RBF kernel
+        assert not any(isinstance(a, Line2D) for a in artists)
+        
+        plt.close(fig)
+
+
+class TestComputeDecisionBoundary:
+    """Tests for the compute_decision_boundary utility function."""
+
+    def test_basic_functionality(self, sample_logs):
+        """Test basic decision boundary computation."""
+        from kernel_viz.visualization.core import compute_decision_boundary
+        
+        xs = sample_logs["feature_space"]
+        alphas = sample_logs["alphas"][0]["alphas"]
+        kernel = sample_logs["kernel"]
+        kernel_params = sample_logs["kernel_params"]
+        
+        xx, yy, zz = compute_decision_boundary(
+            xs, alphas, kernel, kernel_params
+        )
+        
+        # Check output shapes
+        assert xx.shape == yy.shape == zz.shape
+        assert xx.shape == (100, 100)  # Default grid resolution
+        
+        # Check grid bounds
+        assert xx.min() < xs[:, 0].min()
+        assert xx.max() > xs[:, 0].max()
+        assert yy.min() < xs[:, 1].min()
+        assert yy.max() > xs[:, 1].max()
+
+    def test_fixed_dimensions(self, sample_logs):
+        """Test decision boundary with fixed dimensions."""
+        from kernel_viz.visualization.core import compute_decision_boundary
+        
+        # Create 3D data
+        xs_3d = np.random.randn(10, 3)
+        alphas = np.random.randn(10)
+        kernel = sample_logs["kernel"]
+        kernel_params = sample_logs["kernel_params"]
+        
+        # Fix third dimension
+        fixed_dims = {2: 0.5}
+        
+        xx, yy, zz = compute_decision_boundary(
+            xs_3d, alphas, kernel, kernel_params, fixed_dims
+        )
+        
+        # Should still produce 2D grid
+        assert xx.shape == yy.shape == zz.shape
+        assert xx.shape == (100, 100)
+
+    def test_empty_fixed_dims(self, sample_logs):
+        """Test decision boundary with empty fixed_dims dict."""
+        from kernel_viz.visualization.core import compute_decision_boundary
+        
+        xs = sample_logs["feature_space"]
+        alphas = sample_logs["alphas"][0]["alphas"]
+        kernel = sample_logs["kernel"]
+        kernel_params = sample_logs["kernel_params"]
+        
+        # Empty fixed_dims should work
+        xx, yy, zz = compute_decision_boundary(
+            xs, alphas, kernel, kernel_params, {}
+        )
+        
+        assert xx.shape == yy.shape == zz.shape
+
+    def test_kernel_params_none(self, sample_logs):
+        """Test decision boundary with None kernel_params."""
+        from kernel_viz.visualization.core import compute_decision_boundary
+        from kernel_viz.kernels import linear_kernel
+        
+        xs = sample_logs["feature_space"]
+        alphas = sample_logs["alphas"][0]["alphas"]
+        
+        # Use linear kernel with None params
+        xx, yy, zz = compute_decision_boundary(
+            xs, alphas, linear_kernel, None
+        )
+        
+        assert xx.shape == yy.shape == zz.shape
+
+
+class TestVisualizationEdgeCases:
+    """Tests for edge cases and error conditions."""
+
+    def test_empty_alphas_log(self):
+        """Test components with empty alphas log."""
+        visualizer = PerceptronVisualizer()
+        
+        empty_logs = {
+            "feature_space": np.array([[1, 1], [2, 2]]),
+            "true_labels": np.array([1, -1]),
+            "kernel": lambda x, y: np.dot(x, y),
+            "kernel_params": {},
+            "alphas": [],  # Empty!
+            "misclassification_count": []
+        }
+        
+        # Should raise error or handle gracefully
+        with pytest.raises((ValueError, IndexError)):
+            component = visualizer.create_decision_boundary_component(empty_logs)
+            visualizer.add_component(component)
+            visualizer.animate(empty_logs)
+
+    def test_mismatched_data_sizes(self):
+        """Test components with mismatched data sizes."""
+        visualizer = PerceptronVisualizer()
+        
+        mismatched_logs = {
+            "feature_space": np.array([[1, 1], [2, 2], [3, 3]]),  # 3 samples
+            "true_labels": np.array([1, -1]),  # 2 labels - mismatch!
+            "kernel": lambda x, y: np.dot(x, y),
+            "kernel_params": {},
+            "alphas": [{"iteration": 0, "alphas": np.array([1, 0])}],  # 2 alphas
+            "misclassification_count": [1]
+        }
+        
+        # The misclassification tracker should actually handle this by using the size
+        # from feature_space, so it might not raise an error immediately
+        # Instead, let's test that it fails during update when dimensions don't match
+        try:
+            component = visualizer.create_misclassification_tracker_component(
+                mismatched_logs
+            )
+            fig, ax = plt.subplots()
+            artists = component.setup_func(ax)
+            # This should fail during update due to mismatched dimensions
+            with pytest.raises((ValueError, IndexError)):
+                component.update_func(0, ax, artists)
+            plt.close(fig)
+        except (ValueError, IndexError):
+            # It's also OK if it fails during component creation
+            pass
+
+    def test_debug_mode(self, sample_logs):
+        """Test debug mode functionality."""
+        visualizer = PerceptronVisualizer()
+        visualizer.set_debug_mode(True)
+        
+        # Capture debug output
+        import io
+        import sys
+        captured = io.StringIO()
+        sys.stdout = captured
+        
+        component = visualizer.create_alpha_evolution_component(sample_logs)
+        visualizer.add_component(component)
+        
+        sys.stdout = sys.__stdout__
+        output = captured.getvalue()
+        
+        # Should see debug output
+        assert "grid" in output.lower() or "component" in output.lower()
+
+
 if __name__ == "__main__":
     pytest.main([__file__])

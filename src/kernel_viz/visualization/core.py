@@ -128,7 +128,13 @@ def create_decision_boundary_component(
             )
             # Update title for each frame
             ax.set_title(f"Decision Boundary - Iteration {frame + 1}")
-            return [scatter] + list(contour.collections)
+            # Get contour collections (handle deprecation)
+            if hasattr(contour, 'collections'):
+                contour_artists = list(contour.collections)
+            else:
+                # For newer matplotlib versions
+                contour_artists = contour.get_paths()
+            return [scatter] + contour_artists
 
         def setup(ax: Axes) -> List[Artist]:
             # Setup scatter plot
