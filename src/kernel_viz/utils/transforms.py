@@ -4,7 +4,6 @@ from typing import Callable, Iterable
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
-from sklearn.preprocessing import PolynomialFeatures
 
 
 def affine_transform(
@@ -42,15 +41,51 @@ def min_max_scale(features: ArrayLike) -> NDArray[np.float64]:
 
 
 def polynomial_features(features: ArrayLike, degree: int = 2) -> NDArray[np.float64]:
-    """Generates polynomial features up to the specified degree."""
-    # TODO: implement without relying on sklearn
+    """Generates polynomial features up to the specified degree.
+    
+    For input features [x1, x2, ...], generates all polynomial combinations
+    up to the specified degree. For example, with degree=2:
+    [1, x1, x2, x1^2, x1*x2, x2^2]
+    
+    Args:
+        features: Input features of shape (n_samples, n_features)
+        degree: Maximum degree of polynomial features
+        
+    Returns:
+        Polynomial features of shape (n_samples, n_output_features)
+    """
     xs = np.asarray(features, dtype=np.float64)
-    poly_features = PolynomialFeatures(degree=degree)
-    transformed: NDArray[np.float64] = np.asarray(
-        poly_features.fit_transform(xs),
-        dtype=np.float64,
-    )
-    return transformed
+    
+    if degree < 0:
+        raise ValueError("degree must be non-negative")
+    
+    n_samples, n_features = xs.shape
+    
+    # Generate all combinations of powers for each feature
+    # that sum to at most 'degree'
+    from itertools import combinations_with_replacement
+    
+    # Create list to store all polynomial terms
+    poly_features = []
+    
+    # Always include the bias term (all features to power 0)
+    poly_features.append(np.ones((n_samples, 1), dtype=np.float64))
+    
+    # Generate polynomial terms for each degree from 1 to degree
+    for d in range(1, degree + 1):
+        # Generate all combinations of feature indices with replacement
+        # of length d (representing the degree)
+        for combo in combinations_with_replacement(range(n_features), d):
+            # Compute the product of features for this combination
+            term = np.ones((n_samples, 1), dtype=np.float64)
+            for feature_idx in combo:
+                term *= xs[:, feature_idx:feature_idx+1]
+            poly_features.append(term)
+    
+    # Concatenate all polynomial terms
+    result = np.hstack(poly_features)
+    
+    return result
 
 
 def rotate2D(features: ArrayLike, angle: float) -> NDArray[np.float64]:

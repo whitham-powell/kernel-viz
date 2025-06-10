@@ -30,7 +30,7 @@ These issues may affect correctness or usability and should be addressed first:
 
 ## External Dependencies (Low Priority)
 
-- [ ] **TODO** (src/kernel_viz/utils/transforms.py:46): Implement polynomial features without sklearn dependency
+- [x] **TODO** (src/kernel_viz/utils/transforms.py:46): Implement polynomial features without sklearn dependency (completed)
 
 ## Visualization Features from README (To Complete)
 
