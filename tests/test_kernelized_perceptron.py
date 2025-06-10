@@ -88,13 +88,12 @@ class TestKernelizedPerceptron:
                 prediction == y
             ), f"Failed to classify {x} correctly. Expected {y}, got {prediction}."
 
-    def test_XOR_handling(
+    def test_XOR_alpha_updates(
         self,
         kernel_func,
         kwargs,
     ):
-        # TODO: This should be split into 2 or more tests
-
+        """Test that alpha updates occur on XOR dataset."""
         xs = np.array([[0, 0], [1, 1], [0, 1], [1, 0]], dtype=np.float64)
         ys = np.array([1, 1, -1, -1], dtype=np.float64)
         alphas = kernelized_perceptron(xs, ys, kernel_func, kwargs, max_iter=10)
@@ -104,6 +103,16 @@ class TestKernelizedPerceptron:
             f"Expected updates to alphas for XOR dataset, but no updates occurred. "
             f"Got alphas: {alphas}."
         )
+
+    def test_XOR_classification_performance(
+        self,
+        kernel_func,
+        kwargs,
+    ):
+        """Test kernel classification performance on XOR dataset."""
+        xs = np.array([[0, 0], [1, 1], [0, 1], [1, 0]], dtype=np.float64)
+        ys = np.array([1, 1, -1, -1], dtype=np.float64)
+        alphas = kernelized_perceptron(xs, ys, kernel_func, kwargs, max_iter=10)
 
         # Check if kernel is expected to separate XOR
         kernel_name = kernel_func.__name__
@@ -119,16 +128,16 @@ class TestKernelizedPerceptron:
         )
 
         if kernel_name in non_linear_kernels:
-            # Allow non-linear kernels to succeed
+            # Non-linear kernels should separate XOR
             assert misclassified == 0, (
                 f"Kernel {kernel_name} should classify XOR correctly but did not. "
-                f"Got alphas: {alphas}."
+                f"Got {misclassified} misclassifications."
             )
         else:
-            # Expect linear kernels to fail
+            # Linear kernels cannot separate XOR
             assert misclassified > 0, (
-                f"Kernel {kernel_name} incorrectly classified XOR data fully as expected. "
-                f"Got alphas: {alphas}."
+                f"Kernel {kernel_name} unexpectedly classified XOR perfectly. "
+                f"Got {misclassified} misclassifications, expected > 0."
             )
 
     def test_empty_dataset(
