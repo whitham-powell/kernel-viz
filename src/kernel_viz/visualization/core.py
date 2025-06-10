@@ -169,17 +169,26 @@ class PerceptronVisualizer:
     ) -> Animation:
         """Create and display/save the combined animation."""
         self.set_debug_mode(debug)
-        # FIXME: this is problematic, we should determine the number of frames by the iteration count
-        self.total_frames = len(logs["misclassification_count"])
+        # Determine the number of frames from the logged data
+        if "misclassification_count" in logs and logs["misclassification_count"]:
+            self.total_frames = len(logs["misclassification_count"])
+        elif "alphas" in logs and logs["alphas"]:
+            self.total_frames = len(logs["alphas"])
+        else:
+            raise ValueError(
+                "Cannot determine number of frames from logs. No misclassification_count or alphas data found.",
+            )
         begin_animate_time = time.time()
 
         if len(self.components) == 0:
             raise ValueError("No components added to visualizer")
 
-        # TODO add error handling for missing logs / use if raise
-        assert (
-            self.total_frames is not None and self.total_frames > 0
-        ), f"Animation requires valid number of frames. self.total_frames={self.total_frames}"
+        # Validate frame count
+        if self.total_frames is None or self.total_frames <= 0:
+            raise ValueError(
+                f"Animation requires valid number of frames. Got {self.total_frames} frames. "
+                "Ensure the logger has recorded data during training.",
+            )
 
         print(f"Starting animation with {self.total_frames} frames")
 
