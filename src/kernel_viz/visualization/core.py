@@ -567,21 +567,22 @@ class PerceptronVisualizer:
         self,
         logs: Dict[str, Any],
     ) -> AnimationComponent:
-        """Shows the decision boundary evolution during training.
+        """Shows the full kernel response surface evolution during training.
 
-        This simplified version focuses on the decision boundary (where f(x) = 0)
-        rather than the full kernel response surface for better performance and clarity.
+        This component visualizes how the decision function f(x) = sum(alpha_i * K(x_i, x))
+        evolves across the feature space, showing the complete response surface
+        with a colorbar to indicate the magnitude of the response.
         """
         xs = logs["feature_space"]
         kernel = logs["kernel"]
         kernel_params = logs["kernel_params"] or {}
         true_labels = logs["true_labels"]
 
-        # Pre-calculate grid points for decision boundary
-        margin = 0.5  # Margin around data points
+        # Pre-calculate grid points for response surface
+        margin = 1.0  # Margin around data points
         x_min, x_max = xs[:, 0].min() - margin, xs[:, 0].max() + margin
         y_min, y_max = xs[:, 1].min() - margin, xs[:, 1].max() + margin
-        grid_resolution = 100  # Higher resolution for smoother boundary
+        grid_resolution = 50  # Balance between smoothness and performance
 
         xx, yy = np.meshgrid(
             np.linspace(x_min, x_max, grid_resolution),
@@ -590,20 +591,65 @@ class PerceptronVisualizer:
 
         grid_points = np.c_[xx.ravel(), yy.ravel()]  # Flatten grid
 
+        # Pre-compute global normalization bounds for consistent colorbar
+        alphas_log = logs["alphas"]
+        global_response_min = float("inf")
+        global_response_max = float("-inf")
+
+        for frame_data in alphas_log:
+            alphas = frame_data["alphas"]
+            response = np.zeros(len(grid_points), dtype=np.float64)
+            for i, alpha in enumerate(alphas):
+                if abs(alpha) > 1e-10:
+                    kernel_values = np.array(
+                        [
+                            kernel(xs[i], grid_point, **kernel_params)
+                            for grid_point in grid_points
+                        ],
+                        dtype=np.float64,
+                    )
+                    response += alpha * kernel_values
+            response_reshaped = response.reshape(xx.shape)
+            global_response_min = min(global_response_min, response_reshaped.min())
+            global_response_max = max(global_response_max, response_reshaped.max())
+
+        # Ensure we have a valid range
+        if global_response_max - global_response_min < 1e-10:
+            global_response_min = -1
+            global_response_max = 1
+
         if self.debug_mode:
-            print("\nInitializing Decision Boundary Component:")
+            print("\nInitializing Kernel Response Component:")
             print(f"Feature space shape: {xs.shape}")
             print(f"Grid resolution: {grid_resolution}x{grid_resolution}")
             print(f"X range: [{x_min:.2f}, {x_max:.2f}]")
             print(f"Y range: [{y_min:.2f}, {y_max:.2f}]")
+            print(
+                f"Response range: [{global_response_min:.2f}, {global_response_max:.2f}]",
+            )
             print(f"Kernel: {kernel.__name__}")
             print(f"Kernel params: {kernel_params}")
 
         def setup(ax: Axes) -> List[Artist]:
             if self.debug_mode:
-                print("Setting up decision boundary component")
+                print("Setting up kernel response surface component")
 
-            # Initial empty decision boundary (will be updated in animation)
+            # Initial response surface
+            surface = ax.contourf(
+                xx,
+                yy,
+                np.zeros_like(xx),
+                levels=20,
+                cmap="RdBu_r",
+                vmin=global_response_min,
+                vmax=global_response_max,
+            )
+
+            # Add colorbar
+            cbar = plt.colorbar(surface, ax=ax, pad=0.02)
+            cbar.set_label("Kernel Response f(x)", rotation=270, labelpad=15)
+
+            # Decision boundary line
             decision_boundary = ax.contour(
                 xx,
                 yy,
@@ -611,26 +657,17 @@ class PerceptronVisualizer:
                 levels=[0],
                 colors="black",
                 linewidths=2,
+                linestyles="--",
             )
 
-            # Confidence regions
-            confidence_regions = ax.contourf(
-                xx,
-                yy,
-                np.zeros_like(xx),
-                levels=[-1, 0, 1],
-                colors=["lightcoral", "lightblue"],
-                alpha=0.3,
-            )
-
-            # Points with different markers for positive/negative classes
+            # Points with markers for positive/negative classes
             points_pos = ax.scatter(
                 xs[true_labels == 1, 0],
                 xs[true_labels == 1, 1],
                 c="blue",
-                s=100,
+                s=80,
                 marker="o",
-                edgecolor="black",
+                edgecolor="white",
                 linewidth=1.5,
                 zorder=3,
                 label="Class +1",
@@ -640,35 +677,35 @@ class PerceptronVisualizer:
                 xs[true_labels == -1, 0],
                 xs[true_labels == -1, 1],
                 c="red",
-                s=100,
+                s=80,
                 marker="s",
-                edgecolor="black",
+                edgecolor="white",
                 linewidth=1.5,
                 zorder=3,
                 label="Class -1",
             )
 
             # Configure axes
-            ax.set_title("Decision Boundary Evolution")
+            ax.set_title("Kernel Response Surface")
             ax.set_xlabel("Feature 1")
             ax.set_ylabel("Feature 2")
             ax.legend(loc="upper right")
             ax.set_aspect("equal", adjustable="box")
 
             if self.debug_mode:
-                print("Initial boundary and points plotted")
+                print("Initial response surface plotted")
                 print(f"Axes limits: x=[{ax.get_xlim()}], y=[{ax.get_ylim()}]")
 
-            return [decision_boundary, confidence_regions, points_pos, points_neg]
+            return [surface, decision_boundary, points_pos, points_neg]
 
         def update(frame: int, ax: Axes, artists: List[Artist]) -> List[Artist]:
             if self.debug_mode and frame % 10 == 0:
                 print(f"\nUpdating frame {frame}")
 
-            decision_boundary, confidence_regions, points_pos, points_neg = artists
+            surface, decision_boundary, points_pos, points_neg = artists
             alphas = logs["alphas"][frame]["alphas"]
 
-            # Compute decision values on grid
+            # Compute kernel response on grid
             response = np.zeros(len(grid_points), dtype=np.float64)
 
             # Only compute for non-zero alphas (support vectors)
@@ -688,70 +725,61 @@ class PerceptronVisualizer:
 
             response_reshaped = response.reshape(xx.shape)
 
-            # Clear existing contours
+            # Clear existing contours (but not scatter plots)
             for coll in ax.collections[:]:
-                if coll not in [points_pos, points_neg]:
+                if coll not in [points_pos, points_neg] and not isinstance(
+                    coll,
+                    type(ax.collections[0]),
+                ):
                     coll.remove()
 
-            # Update decision boundary and confidence regions
-            if len(active_indices) > 0:
-                new_boundary = ax.contour(
-                    xx,
-                    yy,
-                    response_reshaped,
-                    levels=[0],
-                    colors="black",
-                    linewidths=2,
-                )
-                new_regions = ax.contourf(
-                    xx,
-                    yy,
-                    response_reshaped,
-                    levels=[-1000, 0, 1000],
-                    colors=["lightcoral", "lightblue"],
-                    alpha=0.3,
-                )
-            else:
-                # Empty boundary if no support vectors yet
-                new_boundary = ax.contour(
-                    xx,
-                    yy,
-                    np.zeros_like(xx),
-                    levels=[0],
-                    colors="black",
-                    linewidths=2,
-                )
-                new_regions = ax.contourf(
-                    xx,
-                    yy,
-                    np.zeros_like(xx),
-                    levels=[-1, 0, 1],
-                    colors=["lightcoral", "lightblue"],
-                    alpha=0.3,
-                )
+            # Update response surface
+            new_surface = ax.contourf(
+                xx,
+                yy,
+                response_reshaped,
+                levels=20,
+                cmap="RdBu_r",
+                vmin=global_response_min,
+                vmax=global_response_max,
+            )
+
+            # Update decision boundary
+            new_boundary = ax.contour(
+                xx,
+                yy,
+                response_reshaped,
+                levels=[0],
+                colors="black",
+                linewidths=2,
+                linestyles="--",
+            )
 
             # Highlight support vectors
             support_vector_mask_pos = np.abs(alphas[true_labels == 1]) > 1e-10
             support_vector_mask_neg = np.abs(alphas[true_labels == -1]) > 1e-10
 
-            # Update point sizes to highlight support vectors
-            points_pos.set_sizes([200 if sv else 100 for sv in support_vector_mask_pos])
-            points_neg.set_sizes([200 if sv else 100 for sv in support_vector_mask_neg])
+            # Update point appearance for support vectors
+            points_pos.set_sizes([120 if sv else 80 for sv in support_vector_mask_pos])
+            points_neg.set_sizes([120 if sv else 80 for sv in support_vector_mask_neg])
 
-            # Update point edge colors to highlight support vectors
+            # Highlight active support vectors with different edge color
             points_pos.set_edgecolors(
-                ["yellow" if sv else "black" for sv in support_vector_mask_pos],
+                ["yellow" if sv else "white" for sv in support_vector_mask_pos],
             )
             points_neg.set_edgecolors(
-                ["yellow" if sv else "black" for sv in support_vector_mask_neg],
+                ["yellow" if sv else "white" for sv in support_vector_mask_neg],
             )
 
-            ax.set_title(f"Decision Boundary - Iteration {frame + 1}")
+            ax.set_title(f"Kernel Response Surface - Iteration {frame + 1}")
 
             if self.debug_mode and frame % 10 == 0:
                 print(f"Active support vectors: {len(active_indices)}")
+                print(
+                    f"Response range: [{response_reshaped.min():.2f}, {response_reshaped.max():.2f}]",
+                )
 
-            return [new_boundary, new_regions, points_pos, points_neg]
+            return [new_surface, new_boundary, points_pos, points_neg]
 
         # Initial grid position will be updated by visualizer
         component = AnimationComponent(

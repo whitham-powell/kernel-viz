@@ -144,3 +144,4 @@ Always prioritize fixing existing issues before adding new features.
 - Commit with a meaningful summary of what you did after each major implementation change and logical unit of complete work. Do not skip pre-commit checks to bypass errors. Resolve the errors instead.
 - Assuming tests pass, commit is successful and documentation is updated and committed, push the changes to origin.
 - Using git commit -am"message" is helpful to recommit files changed by the pre-commit hooks.
+- You can run individual pre-commit hooks using "pre-commit run [hook-id] [options]" alternatively "uvx pre-commit run [hook-id] [options]"

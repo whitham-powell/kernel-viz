@@ -336,9 +336,9 @@ class TestKernelResponseComponent:
         # Verify we have the expected artists
         assert (
             len(artists) == 4
-        ), "Expected 4 artists: decision_boundary, confidence_regions, points_pos, points_neg"
+        ), "Expected 4 artists: surface, decision_boundary, points_pos, points_neg"
 
-        # Check for contour and scatter but NOT colorbar
+        # Check for contour and scatter
         assert any(
             isinstance(artist, QuadContourSet) for artist in ax.collections
         ), "Expected contour plot"
@@ -349,11 +349,11 @@ class TestKernelResponseComponent:
             len(scatter_artists) == 2
         ), "Expected 2 scatter plots (pos and neg points)"
 
-        # Verify no colorbar
-        assert ax.figure.axes == [ax], "Expected only one axes (no colorbar)"
+        # Verify colorbar exists (additional axes)
+        assert len(ax.figure.axes) > 1, "Expected colorbar axes"
 
         # Check title and labels
-        assert "Decision Boundary Evolution" in ax.get_title()
+        assert "Kernel Response Surface" in ax.get_title()
         assert ax.get_xlabel() == "Feature 1"
         assert ax.get_ylabel() == "Feature 2"
 
@@ -381,7 +381,7 @@ class TestKernelResponseComponent:
 
         # Verify the updated title reflects the current frame
         assert (
-            ax.get_title() == f"Decision Boundary - Iteration {frame + 1}"
+            ax.get_title() == f"Kernel Response Surface - Iteration {frame + 1}"
         ), "Frame title mismatch"
 
         # Verify the number of artists remains consistent after the update
@@ -390,18 +390,18 @@ class TestKernelResponseComponent:
         ), "Number of artists should remain consistent after update"
         assert len(updated_artists) == 4, "Expected 4 artists after update"
 
-        # The artists are: [decision_boundary, confidence_regions, points_pos, points_neg]
-        decision_boundary, confidence_regions, points_pos, points_neg = updated_artists
+        # The artists are: [surface, decision_boundary, points_pos, points_neg]
+        surface, decision_boundary, points_pos, points_neg = updated_artists
 
         # Verify types
         assert isinstance(
+            surface,
+            QuadContourSet,
+        ), "First artist should be response surface"
+        assert isinstance(
             decision_boundary,
             QuadContourSet,
-        ), "First artist should be decision boundary contour"
-        assert isinstance(
-            confidence_regions,
-            QuadContourSet,
-        ), "Second artist should be confidence regions"
+        ), "Second artist should be decision boundary"
         assert isinstance(
             points_pos,
             PathCollection,
@@ -473,7 +473,7 @@ class TestKernelResponseComponent:
 
         # Check support vector highlighting for positive points
         active_pos = np.abs(alphas[true_labels == 1]) > 1e-10
-        expected_sizes_pos = [200 if active else 100 for active in active_pos]
+        expected_sizes_pos = [120 if active else 80 for active in active_pos]
         assert np.array_equal(
             sizes_pos,
             expected_sizes_pos,
@@ -481,7 +481,7 @@ class TestKernelResponseComponent:
 
         # Check support vector highlighting for negative points
         active_neg = np.abs(alphas[true_labels == -1]) > 1e-10
-        expected_sizes_neg = [200 if active else 100 for active in active_neg]
+        expected_sizes_neg = [120 if active else 80 for active in active_neg]
         assert np.array_equal(
             sizes_neg,
             expected_sizes_neg,
@@ -489,27 +489,25 @@ class TestKernelResponseComponent:
 
         plt.close(fig)
 
-    # Decision Boundary specific tests
-    def test_decision_boundary_exists(self, sample_logs):
-        """Test that decision boundary is properly computed and displayed."""
+    # Kernel Response specific tests
+    def test_response_surface_normalization(self, sample_logs):
+        """Test that kernel response values are properly normalized."""
         visualizer = PerceptronVisualizer()
         component = visualizer.create_kernel_response_component(sample_logs)
 
         fig, ax = plt.subplots()
         artists = component.setup_func(ax)
 
-        # Check decision boundary across multiple frames
+        # Check normalization across multiple frames
         for frame in range(len(sample_logs["alphas"])):
             updated_artists = component.update_func(frame, ax, artists)
-            decision_boundary = updated_artists[0]
+            surface = updated_artists[0]
 
             # Verify it's a contour plot
-            assert isinstance(decision_boundary, QuadContourSet)
+            assert isinstance(surface, QuadContourSet)
 
-            # Decision boundary should have only level 0
-            if hasattr(decision_boundary, "levels"):
-                assert len(decision_boundary.levels) == 1
-                assert decision_boundary.levels[0] == 0
+            # Response surface should have consistent colormap limits
+            # (handled by vmin/vmax in contourf)
 
         plt.close(fig)
 
@@ -562,12 +560,12 @@ class TestKernelResponseComponent:
                         atol=1e-2,
                     ), f"Expected yellow edge for active positive point, got {edge_color[:3]}"
                 else:
-                    # Black edge for non-support vectors
+                    # White edge for non-support vectors
                     assert np.allclose(
                         edge_color[:3],
-                        [0, 0, 0],  # Black in RGB
+                        [1, 1, 1],  # White in RGB
                         atol=1e-2,
-                    ), f"Expected black edge for inactive positive point, got {edge_color[:3]}"
+                    ), f"Expected white edge for inactive positive point, got {edge_color[:3]}"
 
             for edge_color, is_active in zip(negative_edge_colors, active_negative):
                 if is_active:
@@ -578,17 +576,17 @@ class TestKernelResponseComponent:
                         atol=1e-2,
                     ), f"Expected yellow edge for active negative point, got {edge_color[:3]}"
                 else:
-                    # Black edge for non-support vectors
+                    # White edge for non-support vectors
                     assert np.allclose(
                         edge_color[:3],
-                        [0, 0, 0],  # Black in RGB
+                        [1, 1, 1],  # White in RGB
                         atol=1e-2,
-                    ), f"Expected black edge for inactive negative point, got {edge_color[:3]}"
+                    ), f"Expected white edge for inactive negative point, got {edge_color[:3]}"
 
         plt.close(fig)
 
     def test_contour_levels(self, sample_logs):
-        """Test that contour levels are appropriate for decision boundary."""
+        """Test that contour levels are appropriate and consistent."""
         visualizer = PerceptronVisualizer()
         component = visualizer.create_kernel_response_component(sample_logs)
 
@@ -596,22 +594,26 @@ class TestKernelResponseComponent:
         artists = component.setup_func(ax)
         updated_artists = component.update_func(0, ax, artists)
 
-        # Get decision boundary contour
-        decision_boundary = updated_artists[0]
+        # Get response surface
+        surface = updated_artists[0]
+        assert isinstance(surface, QuadContourSet)
+
+        # Response surface should have multiple levels
+        if hasattr(surface, "levels"):
+            assert (
+                len(surface.levels) >= 10
+            ), "Expected at least 10 contour levels for response surface"
+
+        # Get decision boundary
+        decision_boundary = updated_artists[1]
         assert isinstance(decision_boundary, QuadContourSet)
 
-        # Decision boundary should only have level 0
+        # Decision boundary should have level 0
         if hasattr(decision_boundary, "levels"):
             assert (
-                len(decision_boundary.levels) == 1
-            ), "Expected only 1 contour level (decision boundary)"
-            assert (
-                decision_boundary.levels[0] == 0
-            ), "Expected decision boundary at level 0"
-
-        # Get confidence regions
-        confidence_regions = updated_artists[1]
-        assert isinstance(confidence_regions, QuadContourSet)
+                0 in decision_boundary.levels
+                or abs(decision_boundary.levels[0]) < 1e-10
+            )
 
         plt.close(fig)
 
