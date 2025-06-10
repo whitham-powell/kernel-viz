@@ -487,6 +487,426 @@ class KernelMatrixHeatmapFactory(ComponentFactory):
         return artists
 
 
+class KernelResponseFactory(ComponentFactory):
+    """Factory for creating kernel response surface visualization components.
+
+    This component visualizes how the decision function f(x) = sum(alpha_i * K(x_i, x))
+    evolves across the feature space, showing the complete response surface
+    with a colorbar to indicate the magnitude of the response.
+    """
+
+    def __init__(self, logs: Dict[str, Any], debug_mode: bool = False):
+        self.debug_mode = debug_mode
+        super().__init__(logs)
+
+    def _extract_data(self) -> None:
+        """Extract necessary data from logs."""
+        self.xs = self.logs["feature_space"]
+        self.kernel = self.logs["kernel"]
+        self.kernel_params = self.logs["kernel_params"] or {}
+        self.true_labels = self.logs["true_labels"]
+        self.alphas_log = self.logs["alphas"]
+
+        # Pre-calculate grid points for response surface
+        margin = 1.0  # Margin around data points
+        self.x_min = self.xs[:, 0].min() - margin
+        self.x_max = self.xs[:, 0].max() + margin
+        self.y_min = self.xs[:, 1].min() - margin
+        self.y_max = self.xs[:, 1].max() + margin
+        self.grid_resolution = 50  # Balance between smoothness and performance
+
+        self.xx, self.yy = np.meshgrid(
+            np.linspace(self.x_min, self.x_max, self.grid_resolution),
+            np.linspace(self.y_min, self.y_max, self.grid_resolution),
+        )
+
+        self.grid_points = np.c_[self.xx.ravel(), self.yy.ravel()]  # Flatten grid
+
+        # Pre-compute global normalization bounds for consistent colorbar
+        self.global_response_min = float("inf")
+        self.global_response_max = float("-inf")
+
+        for frame_data in self.alphas_log:
+            alphas = frame_data["alphas"]
+            response = np.zeros(len(self.grid_points), dtype=np.float64)
+            for i, alpha in enumerate(alphas):
+                if abs(alpha) > 1e-10:
+                    kernel_values = np.array(
+                        [
+                            self.kernel(self.xs[i], grid_point, **self.kernel_params)
+                            for grid_point in self.grid_points
+                        ],
+                        dtype=np.float64,
+                    )
+                    response += alpha * kernel_values
+            response_reshaped = response.reshape(self.xx.shape)
+            self.global_response_min = min(
+                self.global_response_min,
+                response_reshaped.min(),
+            )
+            self.global_response_max = max(
+                self.global_response_max,
+                response_reshaped.max(),
+            )
+
+        # Ensure we have a valid range
+        if self.global_response_max - self.global_response_min < 1e-10:
+            self.global_response_min = -1
+            self.global_response_max = 1
+
+        if self.debug_mode:
+            print("\nInitializing Kernel Response Component:")
+            print(f"Feature space shape: {self.xs.shape}")
+            print(f"Grid resolution: {self.grid_resolution}x{self.grid_resolution}")
+            print(f"X range: [{self.x_min:.2f}, {self.x_max:.2f}]")
+            print(f"Y range: [{self.y_min:.2f}, {self.y_max:.2f}]")
+            print(
+                f"Response range: [{self.global_response_min:.2f}, {self.global_response_max:.2f}]",
+            )
+            print(f"Kernel: {self.kernel.__name__}")
+            print(f"Kernel params: {self.kernel_params}")
+
+    def setup(self, ax: Axes) -> List[Artist]:
+        """Setup initial visualization."""
+        if self.debug_mode:
+            print("Setting up kernel response surface component")
+
+        # Initial response surface
+        surface = ax.contourf(
+            self.xx,
+            self.yy,
+            np.zeros_like(self.xx),
+            levels=20,
+            cmap="RdBu_r",
+            vmin=self.global_response_min,
+            vmax=self.global_response_max,
+        )
+
+        # Add colorbar
+        cbar = plt.colorbar(surface, ax=ax, pad=0.02)
+        cbar.set_label("Kernel Response f(x)", rotation=270, labelpad=15)
+
+        # Decision boundary line
+        decision_boundary = ax.contour(
+            self.xx,
+            self.yy,
+            np.zeros_like(self.xx),
+            levels=[0],
+            colors="black",
+            linewidths=2,
+            linestyles="--",
+        )
+
+        # Points with markers for positive/negative classes
+        points_pos = ax.scatter(
+            self.xs[self.true_labels == 1, 0],
+            self.xs[self.true_labels == 1, 1],
+            c="blue",
+            s=80,
+            marker="o",
+            edgecolor="white",
+            linewidth=1.5,
+            zorder=3,
+            label="Class +1",
+        )
+        points_neg = ax.scatter(
+            self.xs[self.true_labels == -1, 0],
+            self.xs[self.true_labels == -1, 1],
+            c="red",
+            s=80,
+            marker="s",
+            edgecolor="white",
+            linewidth=1.5,
+            zorder=3,
+            label="Class -1",
+        )
+
+        # Configuration
+        ax.set_xlabel("Feature 1")
+        ax.set_ylabel("Feature 2")
+        ax.set_title("Kernel Response Surface - Iteration 1")
+        ax.legend(loc="upper right")
+
+        # Store the colorbar mappable for updates
+        self._colorbar_mappable = surface
+
+        # Return the contour objects, not their collections
+        return [surface, decision_boundary, points_pos, points_neg]
+
+    def update(self, frame: int, ax: Axes, artists: List[Artist]) -> List[Artist]:
+        """Update visualization for given frame."""
+        # Clear old contours
+        for artist in ax.collections[:-2]:  # Keep scatter plots
+            artist.remove()
+
+        # Compute response surface for current alphas
+        alphas = self.alphas_log[frame]["alphas"]
+        response = np.zeros(len(self.grid_points), dtype=np.float64)
+
+        for i, alpha in enumerate(alphas):
+            if abs(alpha) > 1e-10:
+                kernel_values = np.array(
+                    [
+                        self.kernel(self.xs[i], grid_point, **self.kernel_params)
+                        for grid_point in self.grid_points
+                    ],
+                    dtype=np.float64,
+                )
+                response += alpha * kernel_values
+
+        response_surface = response.reshape(self.xx.shape)
+
+        # Update surface
+        surface = ax.contourf(
+            self.xx,
+            self.yy,
+            response_surface,
+            levels=20,
+            cmap="RdBu_r",
+            vmin=self.global_response_min,
+            vmax=self.global_response_max,
+        )
+
+        # Update decision boundary
+        decision_boundary = ax.contour(
+            self.xx,
+            self.yy,
+            response_surface,
+            levels=[0],
+            colors="black",
+            linewidths=2,
+            linestyles="--",
+        )
+
+        # Highlight support vectors
+        points_pos = artists[-2]
+        points_neg = artists[-1]
+
+        # Update support vector highlighting
+        support_vector_mask_pos = np.abs(alphas[self.true_labels == 1]) > 1e-10
+        support_vector_mask_neg = np.abs(alphas[self.true_labels == -1]) > 1e-10
+
+        # Update point appearance for support vectors
+        points_pos.set_sizes([120 if sv else 80 for sv in support_vector_mask_pos])
+        points_neg.set_sizes([120 if sv else 80 for sv in support_vector_mask_neg])
+
+        # Highlight active support vectors with different edge color
+        points_pos.set_edgecolors(
+            ["yellow" if sv else "white" for sv in support_vector_mask_pos],
+        )
+        points_neg.set_edgecolors(
+            ["yellow" if sv else "white" for sv in support_vector_mask_neg],
+        )
+
+        # Update title (keep simple to match original)
+        ax.set_title(f"Kernel Response Surface - Iteration {frame + 1}")
+
+        # Return the contour objects and scatter plots
+        return [surface, decision_boundary, points_pos, points_neg]
+
+
+class KernelMatrixFactory(ComponentFactory):
+    """Factory for creating kernel matrix visualization with alpha overlay.
+
+    This component shows the kernel matrix heatmap with alpha values overlay.
+    Since the kernel matrix is constant during training, this component
+    focuses on showing how alpha values evolve relative to the kernel structure.
+    """
+
+    def __init__(self, logs: Dict[str, Any], debug_mode: bool = False):
+        self.debug_mode = debug_mode
+        super().__init__(logs)
+
+    def _extract_data(self) -> None:
+        """Extract necessary data from logs."""
+        self.kernel_matrix = self.logs.get("kernel_matrix")
+        self.xs = self.logs["feature_space"]
+        self.kernel = self.logs["kernel"]
+        self.kernel_params = self.logs["kernel_params"] or {}
+        self.alphas_history = self.logs["alphas"]
+
+        if self.kernel_matrix is None:
+            # Compute kernel matrix if not provided
+            n_samples = len(self.xs)
+            self.kernel_matrix = np.zeros((n_samples, n_samples))
+            for i in range(n_samples):
+                for j in range(n_samples):
+                    self.kernel_matrix[i, j] = self.kernel(
+                        self.xs[i],
+                        self.xs[j],
+                        **self.kernel_params,
+                    )
+
+        self.n_samples = len(self.kernel_matrix)
+
+    def setup(self, ax: Axes) -> List[Artist]:
+        """Setup initial visualization."""
+        # Create a more informative visualization
+        assert self.kernel_matrix is not None  # Ensured in _extract_data
+        im = ax.imshow(
+            self.kernel_matrix,
+            cmap="RdBu_r",
+            aspect="equal",
+            vmin=-float(abs(self.kernel_matrix).max()),
+            vmax=float(abs(self.kernel_matrix).max()),
+        )
+
+        # Add colorbar
+        cbar = plt.colorbar(im, ax=ax, pad=0.02)
+        cbar.set_label("Kernel Value", rotation=270, labelpad=15)
+
+        # Set ticks and labels
+        if self.n_samples <= 20:  # Only show individual labels for small datasets
+            ax.set_xticks(range(self.n_samples))
+            ax.set_yticks(range(self.n_samples))
+            ax.set_xticklabels([f"{i}" for i in range(self.n_samples)], fontsize=8)
+            ax.set_yticklabels([f"{i}" for i in range(self.n_samples)], fontsize=8)
+
+        ax.set_xlabel("Sample Index")
+        ax.set_ylabel("Sample Index")
+        ax.set_title("Kernel Matrix K(x_i, x_j)")
+
+        # Add grid for better readability
+        ax.set_xticks(np.arange(self.n_samples) - 0.5, minor=True)
+        ax.set_yticks(np.arange(self.n_samples) - 0.5, minor=True)
+        ax.grid(which="minor", color="gray", linestyle="-", linewidth=0.2)
+
+        # Initialize alpha indicators
+        alpha_indicators = []
+        for i in range(self.n_samples):
+            # Add markers on diagonal to show support vectors
+            marker = ax.plot(
+                i,
+                i,
+                "o",
+                color="yellow",
+                markersize=0,
+                markeredgecolor="black",
+                markeredgewidth=1,
+            )[0]
+            alpha_indicators.append(marker)
+
+        return [im] + alpha_indicators
+
+    def update(self, frame: int, ax: Axes, artists: List[Artist]) -> List[Artist]:
+        """Update visualization for given frame."""
+        alpha_indicators = artists[1:]
+        alphas = self.alphas_history[frame]["alphas"]
+
+        # Update support vector indicators
+        for i, (alpha, marker) in enumerate(zip(alphas, alpha_indicators)):
+            if abs(alpha) > 1e-10:
+                # Support vector - show with size proportional to |alpha|
+                marker.set_markersize(min(15, 5 + 10 * abs(alpha)))
+                marker.set_color("yellow" if alpha > 0 else "cyan")
+            else:
+                marker.set_markersize(0)
+
+        # Update title with iteration info
+        n_support = np.sum(np.abs(alphas) > 1e-10)
+        ax.set_title(
+            f"Kernel Matrix - Iteration {frame + 1} ({n_support} support vectors)",
+        )
+
+        return artists
+
+
+class MisclassificationTrackerFactory(ComponentFactory):
+    """Factory for creating misclassification tracker visualization.
+
+    This component visualizes misclassified training points dynamically
+    during perceptron updates.
+    """
+
+    def __init__(self, logs: Dict[str, Any], debug_mode: bool = False):
+        self.debug_mode = debug_mode
+        super().__init__(logs)
+
+    def _extract_data(self) -> None:
+        """Extract necessary data from logs."""
+        self.xs = self.logs["feature_space"]  # Training points
+        self.true_labels = self.logs["true_labels"]  # Ground-truth labels (+1 or -1)
+        self.alphas_log = self.logs["alphas"]  # Alpha values for each iteration
+        self.kernel = self.logs["kernel"]  # Kernel function
+        self.kernel_params = self.logs["kernel_params"] or {}  # Kernel parameters
+
+    def setup(self, ax: Axes) -> List[Artist]:
+        """Setup the misclassification tracker visualization."""
+        if self.debug_mode:
+            print("Setting up misclassification tracker")
+
+        # Initial scatter plot for all training points
+        points = ax.scatter(
+            self.xs[:, 0],
+            self.xs[:, 1],
+            c="gray",
+            s=80,
+            edgecolor="black",
+            linewidth=1,
+            zorder=2,
+        )
+
+        # Configure plot
+        ax.set_title("Misclassified Points Tracker")
+        ax.set_xlabel("Feature 1")
+        ax.set_ylabel("Feature 2")
+
+        # Add custom legend
+        legend_elements = [
+            plt.Line2D(
+                [0],
+                [0],
+                marker="o",
+                color="w",
+                label="Correctly Classified",
+                markerfacecolor="gray",
+                markersize=10,
+                markeredgecolor="black",
+            ),
+            plt.Line2D(
+                [0],
+                [0],
+                marker="o",
+                color="w",
+                label="Misclassified",
+                markerfacecolor="red",
+                markersize=10,
+                markeredgecolor="black",
+            ),
+        ]
+        ax.legend(handles=legend_elements, loc="upper right", title="Point Status")
+
+        return [points]
+
+    def update(self, frame: int, ax: Axes, artists: List[Artist]) -> List[Artist]:
+        """Update the visualization for the given iteration."""
+        points = artists[0]
+        alphas = self.alphas_log[frame]["alphas"]
+
+        # Compute the decision function for all training points
+        decision_function = np.zeros(len(self.xs))
+        for i in range(len(self.xs)):
+            decision_function[i] = np.sum(
+                [
+                    alphas[j]
+                    * self.kernel(self.xs[j], self.xs[i], **self.kernel_params)
+                    for j in range(len(self.xs))
+                ],
+            )
+
+        # Identify misclassified points
+        misclassified = (self.true_labels * decision_function) < 0
+
+        # Update colors: Red for misclassified, Gray for correctly classified
+        colors = ["red" if m else "gray" for m in misclassified]
+        points.set_color(colors)
+
+        # Update title (keep it simple to match original)
+        # The original implementation doesn't update the title per frame
+
+        return [points]
+
+
 # Factory method to create components
 def create_component(
     component_type: str,
@@ -507,6 +927,9 @@ def create_component(
         "decision_boundary": DecisionBoundaryFactory,
         "alpha_evolution": AlphaEvolutionFactory,
         "kernel_matrix_heatmap": KernelMatrixHeatmapFactory,
+        "kernel_response": KernelResponseFactory,
+        "kernel_matrix": KernelMatrixFactory,
+        "misclassification_tracker": MisclassificationTrackerFactory,
     }
 
     if component_type not in factories:
