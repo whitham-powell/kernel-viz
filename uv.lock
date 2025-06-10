@@ -368,7 +368,7 @@ requires-dist = [
     { name = "scikit-learn" },
     { name = "scipy" },
     { name = "seaborn" },
-    { name = "typing-extensions", specifier = ">=4.14.0" },
+    { name = "typing-extensions" },
 ]
 provides-extras = ["dev"]
 

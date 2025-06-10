@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from src.transforms import (
+from kernel_viz.utils.transforms import (
     affine_transform,
     augment_to_3d,
     composite_transform,

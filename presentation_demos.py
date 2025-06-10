@@ -5,9 +5,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.datasets import make_classification
 
-from src.kernel_visualizer import PerceptronVisualizer
-from src.kernelized_perceptron import PerceptronLogger, kernelized_perceptron
-from src.kernels import laplacian_kernel
+from kernel_viz.algorithms.perceptron import PerceptronLogger, kernelized_perceptron
+from kernel_viz.kernels import laplacian_kernel
+from kernel_viz.visualization.core import PerceptronVisualizer
 
 # Generate some random 2D data
 np.random.seed(42)  # for reproducibility
@@ -50,7 +50,7 @@ logger = PerceptronLogger()
 alphas = kernelized_perceptron(
     xs,
     ys,
-    kernel=demo_kernel,  # type: ignore
+    kernel=demo_kernel,
     kernel_params=demo_kernel_params,
     max_iter=5,
     logger=logger,

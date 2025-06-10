@@ -4,8 +4,8 @@ from unittest.mock import patch
 
 import numpy as np
 
-from src.kernelized_perceptron import PerceptronLogger, kernelized_perceptron
-from src.kernels import linear_kernel, rbf_gaussian_kernel
+from kernel_viz.algorithms.perceptron import PerceptronLogger, kernelized_perceptron
+from kernel_viz.kernels import linear_kernel, rbf_gaussian_kernel
 
 
 class TestKernelizedPerceptronEdgeCases:
@@ -34,7 +34,7 @@ class TestKernelizedPerceptronEdgeCases:
         ), "Should converge to zero misclassifications"
 
         # Verify all training points are correctly classified
-        from src.kernelized_perceptron import predict
+        from kernel_viz.algorithms.perceptron import predict
 
         for i, (x, y) in enumerate(zip(xs, ys)):
             prediction = predict(xs, alphas, x, linear_kernel)

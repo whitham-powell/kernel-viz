@@ -9,9 +9,9 @@ from matplotlib.collections import PathCollection
 from matplotlib.contour import QuadContourSet
 from matplotlib.lines import Line2D
 
-from src.kernel_visualizer import PerceptronVisualizer
-from src.kernelized_perceptron import PerceptronLogger
-from src.kernels import linear_kernel, polynomial_kernel, rbf_gaussian_kernel
+from kernel_viz.algorithms.perceptron import PerceptronLogger
+from kernel_viz.kernels import linear_kernel, polynomial_kernel, rbf_gaussian_kernel
+from kernel_viz.visualization.core import PerceptronVisualizer
 
 
 class TestData:

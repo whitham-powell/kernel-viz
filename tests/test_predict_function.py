@@ -3,8 +3,8 @@
 import numpy as np
 import pytest
 
-from src.kernelized_perceptron import kernelized_perceptron, predict
-from src.kernels import linear_kernel, polynomial_kernel, rbf_gaussian_kernel
+from kernel_viz.algorithms.perceptron import kernelized_perceptron, predict
+from kernel_viz.kernels import linear_kernel, polynomial_kernel, rbf_gaussian_kernel
 
 
 class TestPredictFunction:

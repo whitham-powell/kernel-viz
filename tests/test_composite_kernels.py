@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from src.kernels import (
+from kernel_viz.kernels import (
     additive_kernel,
     linear_kernel,
     multiplicative_kernel,
@@ -255,7 +255,7 @@ class TestCompositeKernelIntegration:
 
     def test_additive_kernel_in_prediction_context(self):
         """Test additive kernel can be used in prediction scenarios."""
-        from src.kernelized_perceptron import predict
+        from kernel_viz.algorithms.perceptron import predict
 
         xs = np.array([[1, 1], [-1, -1]], dtype=np.float64)
         alphas = np.array([1.0, 1.0], dtype=np.float64)
@@ -271,7 +271,7 @@ class TestCompositeKernelIntegration:
 
     def test_multiplicative_kernel_in_prediction_context(self):
         """Test multiplicative kernel can be used in prediction scenarios."""
-        from src.kernelized_perceptron import predict
+        from kernel_viz.algorithms.perceptron import predict
 
         xs = np.array([[1, 1], [-1, -1]], dtype=np.float64)
         alphas = np.array([1.0, 1.0], dtype=np.float64)

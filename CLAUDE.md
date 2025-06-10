@@ -54,24 +54,46 @@ uv run python presentation_demos.py
 
 ## Architecture Overview
 
-This is a kernel visualization framework for statistical learning, specifically implementing a kernelized perceptron with comprehensive visualization capabilities.
+This is a kernel visualization framework for statistical learning, organized as a modular package structure to support extensibility and future algorithm implementations.
+
+### Package Structure
+
+```
+src/kernel_viz/
+├── algorithms/          # Kernelized machine learning algorithms
+│   ├── perceptron.py    # Kernelized perceptron implementation
+│   ├── pca.py           # Future: Kernelized PCA
+│   ├── svm.py           # Future: Kernelized SVM
+│   └── kmeans.py        # Future: Kernelized K-means
+├── kernels/             # Kernel function implementations
+│   ├── base.py          # Basic kernels (linear, polynomial, RBF, etc.)
+│   └── composite.py     # Composite kernels (additive, multiplicative)
+├── visualization/       # Visualization components
+│   ├── core.py          # Main visualization engine
+│   ├── boundaries.py    # Future: Decision boundary utilities
+│   ├── animations.py    # Future: Animation components
+│   └── interactive.py   # Future: Interactive visualizations
+└── utils/               # Utility functions
+    └── transforms.py    # Data transformation utilities
+```
 
 ### Core Components
 
-**src/kernelized_perceptron.py**: Main algorithm implementation
+**kernel_viz.algorithms.perceptron**: Main algorithm implementation
 - `kernelized_perceptron()` function: Core training algorithm
 - `PerceptronLogger`: Tracks training metrics (alphas, misclassifications, kernel matrices)
 
-**src/kernels.py**: Kernel function implementations
-- Contains linear, affine, quadratic, polynomial, RBF, and Laplacian kernels
+**kernel_viz.kernels**: Kernel function implementations
+- `base.py`: Contains linear, affine, quadratic, polynomial, RBF, and Laplacian kernels
+- `composite.py`: Additive and multiplicative kernel combinations
 - All kernels follow signature: `kernel(x, y, **params) -> Union[float, ArrayLike]`
 
-**src/kernel_visualizer.py**: Visualization engine
+**kernel_viz.visualization.core**: Visualization engine
 - `PerceptronVisualizer`: Main visualization class with multiple animation components
 - `compute_decision_boundary()`: Generates decision boundaries for plotting
 - Supports single/multi-component animations, alpha evolution, and 2D decision boundaries
 
-**src/transforms.py**: Data transformation utilities for preprocessing
+**kernel_viz.utils.transforms**: Data transformation utilities for preprocessing
 
 ### Key Design Patterns
 

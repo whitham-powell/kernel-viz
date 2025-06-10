@@ -30,7 +30,7 @@ dependencies = [
     "scikit-learn",
     "scipy",
     "ffmpeg-python",
-    "typing-extensions>=4.14.0",
+    "typing-extensions",
 ]
 
 [project.optional-dependencies]
@@ -105,8 +105,8 @@ exclude_lines = [
 ]
 
 [tool.setuptools.packages.find]
-where = ["."]
-include = ["src*"]
+where = ["src"]
+include = ["kernel_viz*"]
 
 [tool.setuptools.package-dir]
-"" = "."
+"" = "src"

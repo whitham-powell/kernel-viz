@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from src.kernels import (
+from kernel_viz.kernels import (
     affine_kernel,
     exponential_kernel,
     laplacian_kernel,
