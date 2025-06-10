@@ -136,6 +136,31 @@ All tool configurations are centralized in pyproject.toml for consistency.
 
 Always prioritize fixing existing issues before adding new features.
 
+## Recent Work Summary (Last Updated: 2025-01-10)
+
+### Completed Tasks
+- Created Jupyter notebook for kernelized perceptron usage examples (in notebooks/)
+- Fixed all critical visualization issues (frame count, error handling)
+- Restored kernel response surface visualization as distinct from decision boundary
+- Both visualizations now work properly with appropriate visual elements
+- Split large XOR test into focused unit tests
+- Parameterized kernel tests to reduce duplication (LinearKernel, AffineKernel)
+- All 300+ tests passing
+
+### Current Status
+- **Where we left off**: Started refactoring visualization classes to separate files (created base.py but reverted)
+- Next task to resume: Complete refactoring of visualization components from core.py into:
+  - base.py (AnimationComponent class)
+  - visualizer.py (PerceptronVisualizer class)
+  - components.py (individual visualization components)
+  - Keep compute_decision_boundary() in core.py or move to utilities
+
+### Next Priority Tasks
+1. Refactor visualization classes to separate files (medium priority) - IN PROGRESS
+2. Implement kernel matrix heatmap animation (static version exists)
+3. Add comprehensive tests for visualization components
+4. Consider performance optimizations for kernel response surface
+
 ## Memories
 
 - Always review the claude.md, readme.md, and TODOS.md when starting a new session.

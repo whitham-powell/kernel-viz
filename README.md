@@ -42,8 +42,8 @@ source .venv/bin/activate
   - **Visualizations**
     - [x] Multiple component animations
     - [x] Single component animations
-    - [ ] Kernel response component - WIP
-    - [ ] Kernel matrix heatmap
+    - [x] Kernel response surface visualization (with colorbar)
+    - [ ] Kernel matrix heatmap animation (static version exists)
     - [x] Alpha evolution component
     - [x] 2D decision boundary plotting
 

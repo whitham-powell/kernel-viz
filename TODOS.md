@@ -25,8 +25,8 @@ These issues may affect correctness or usability and should be addressed first:
 - [ ] **TODO** (src/kernel_viz/visualization/core.py:257): Determine if certain attributes should be class-level
 
 ### 2. Test Improvements
-- [ ] **TODO** (tests/test_kernelized_perceptron.py:96): Split large test into multiple smaller tests
-- [ ] **TODO** (tests/test_kernels.py:15-16): Parameterize tests for different data types (ints, floats, numpy arrays)
+- [x] **TODO** (tests/test_kernelized_perceptron.py:96): Split large test into multiple smaller tests
+- [x] **TODO** (tests/test_kernels.py:15-16): Parameterize tests for different data types (ints, floats, numpy arrays)
 
 ## External Dependencies (Low Priority)
 
@@ -37,7 +37,7 @@ These issues may affect correctness or usability and should be addressed first:
 These are mentioned in README.md but need implementation:
 
 ### Core Visualizations
-- [ ] Complete kernel response component visualization (marked as WIP)
+- [x] Complete kernel response component visualization (now shows full response surface with colorbar)
 - [ ] Implement kernel matrix heatmap visualization
 - [ ] Add tests for all visualization components
 
