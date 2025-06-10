@@ -14,6 +14,7 @@ from numpy.typing import ArrayLike, NDArray
 from typing_extensions import TypeAlias
 
 from .base import AnimationComponent
+from .visualizer import PerceptronVisualizer
 
 ContourOutput: TypeAlias = Union[QuadContourSet, List[PathCollection]]
 
