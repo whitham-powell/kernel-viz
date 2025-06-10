@@ -563,23 +563,25 @@ class PerceptronVisualizer:
 
         return component
 
-    # FIXME: This is probably not useful for kernelized perceptron or its implemented incorrectly. Results in overly complicated and fancy decision boundary animation
     def create_kernel_response_component(
         self,
         logs: Dict[str, Any],
     ) -> AnimationComponent:
-        """Shows how the kernel response changes with alpha values."""
+        """Shows the decision boundary evolution during training.
+
+        This simplified version focuses on the decision boundary (where f(x) = 0)
+        rather than the full kernel response surface for better performance and clarity.
+        """
         xs = logs["feature_space"]
         kernel = logs["kernel"]
         kernel_params = logs["kernel_params"] or {}
         true_labels = logs["true_labels"]
-        alphas_log = logs["alphas"]
 
-        # Pre-calculate grid points
-        margin = 1.0  # Consistent margin around data points
+        # Pre-calculate grid points for decision boundary
+        margin = 0.5  # Margin around data points
         x_min, x_max = xs[:, 0].min() - margin, xs[:, 0].max() + margin
         y_min, y_max = xs[:, 1].min() - margin, xs[:, 1].max() + margin
-        grid_resolution = 50
+        grid_resolution = 100  # Higher resolution for smoother boundary
 
         xx, yy = np.meshgrid(
             np.linspace(x_min, x_max, grid_resolution),
@@ -588,202 +590,168 @@ class PerceptronVisualizer:
 
         grid_points = np.c_[xx.ravel(), yy.ravel()]  # Flatten grid
 
-        # Pre-compute global normalization bounds
-        global_response_min = float("inf")
-        global_response_max = float("-inf")
-
-        for frame_data in alphas_log:
-            alphas = frame_data["alphas"]
-            response = np.zeros_like(xx, dtype=np.float64)
-            for i, alpha in enumerate(alphas):
-                response += alpha * np.array(
-                    [
-                        kernel(xs[i], grid_point, **kernel_params)
-                        for grid_point in grid_points
-                    ],
-                ).reshape(xx.shape)
-                global_response_min = min(global_response_min, response.min())
-                global_response_max = max(global_response_max, response.max())
-
-        def normalize_response(response: NDArray[np.float64]) -> NDArray[np.float64]:
-            """Normalize the kernel response values."""
-            if global_response_max - global_response_min > 1e-10:
-                return (response - global_response_min) / (
-                    global_response_max - global_response_min
-                )
-            return response
-
         if self.debug_mode:
-            print("\nInitializing Kernel Response Component:")
+            print("\nInitializing Decision Boundary Component:")
             print(f"Feature space shape: {xs.shape}")
             print(f"Grid resolution: {grid_resolution}x{grid_resolution}")
             print(f"X range: [{x_min:.2f}, {x_max:.2f}]")
             print(f"Y range: [{y_min:.2f}, {y_max:.2f}]")
             print(f"Kernel: {kernel.__name__}")
             print(f"Kernel params: {kernel_params}")
-            print("\nKernel Response Normalization:")
-            print(
-                f"Global response range: [{global_response_min:.4f}, {global_response_max:.4f}]",
-            )
 
         def setup(ax: Axes) -> List[Artist]:
             if self.debug_mode:
-                print("Setting up kernel response component")
+                print("Setting up decision boundary component")
 
-            # Initial response surface
-
-            surface = ax.contourf(xx, yy, np.zeros_like(xx), levels=20, cmap="PuOr")
-
-            # Add contour lines for level sets
-            contours = ax.contour(
+            # Initial empty decision boundary (will be updated in animation)
+            decision_boundary = ax.contour(
                 xx,
                 yy,
                 np.zeros_like(xx),
-                levels=10,
-                colors="k",
-                alpha=0.2,
-                linewidths=0.5,
+                levels=[0],
+                colors="black",
+                linewidths=2,
+            )
+
+            # Confidence regions
+            confidence_regions = ax.contourf(
+                xx,
+                yy,
+                np.zeros_like(xx),
+                levels=[-1, 0, 1],
+                colors=["lightcoral", "lightblue"],
+                alpha=0.3,
             )
 
             # Points with different markers for positive/negative classes
-
             points_pos = ax.scatter(
-                xs[true_labels == 1, 0],  # x coordinates for positive class
-                xs[true_labels == 1, 1],  # y coordinates for positive class
-                c="gray",
-                s=80,
-                marker="o",  # circle for positive class
+                xs[true_labels == 1, 0],
+                xs[true_labels == 1, 1],
+                c="blue",
+                s=100,
+                marker="o",
                 edgecolor="black",
-                linewidth=1,
-                zorder=2,
-                label="Positive class",
+                linewidth=1.5,
+                zorder=3,
+                label="Class +1",
             )
 
             points_neg = ax.scatter(
-                xs[true_labels == -1, 0],  # x coordinates for negative class
-                xs[true_labels == -1, 1],  # y coordinates for negative class
-                c="gray",
-                s=80,
-                marker="x",  # x for negative class
+                xs[true_labels == -1, 0],
+                xs[true_labels == -1, 1],
+                c="red",
+                s=100,
+                marker="s",
                 edgecolor="black",
-                linewidth=1,
-                zorder=2,
-                label="Negative class",
+                linewidth=1.5,
+                zorder=3,
+                label="Class -1",
             )
 
-            # Configure colorbars
-            surface_colorbar = plt.colorbar(surface, ax=ax, location="right", pad=0.1)
-            surface_colorbar.set_label("Kernel Response")
-
-            # Add contour labels
-            ax.clabel(contours, inline=True, fontsize=8, fmt="%.1f")
-
             # Configure axes
-            ax.set_title("Kernel Response Surface")
+            ax.set_title("Decision Boundary Evolution")
             ax.set_xlabel("Feature 1")
             ax.set_ylabel("Feature 2")
-
-            # Custom legend
-            legend_elements = [
-                plt.Line2D(
-                    [0],
-                    [0],
-                    marker="o",
-                    color="w",
-                    markerfacecolor="red",
-                    label="Active Point",
-                    markersize=10,
-                    markeredgecolor="black",
-                ),
-                plt.Line2D(
-                    [0],
-                    [0],
-                    marker="o",
-                    color="w",
-                    markerfacecolor="gray",
-                    label="Training Point",
-                    markersize=10,
-                    markeredgecolor="black",
-                ),
-            ]
-            ax.legend(handles=legend_elements, loc="upper right")
+            ax.legend(loc="upper right")
+            ax.set_aspect("equal", adjustable="box")
 
             if self.debug_mode:
-                print("Initial surface and points plotted")
+                print("Initial boundary and points plotted")
                 print(f"Axes limits: x=[{ax.get_xlim()}], y=[{ax.get_ylim()}]")
 
-            return [surface, points_pos, points_neg, contours]
+            return [decision_boundary, confidence_regions, points_pos, points_neg]
 
         def update(frame: int, ax: Axes, artists: List[Artist]) -> List[Artist]:
             if self.debug_mode and frame % 10 == 0:
                 print(f"\nUpdating frame {frame}")
 
-            surface, points_pos, points_neg, contours = artists
+            decision_boundary, confidence_regions, points_pos, points_neg = artists
             alphas = logs["alphas"][frame]["alphas"]
 
-            # Initialize response grid
-            response = np.zeros_like(xx, dtype=np.float64)
-            grid_points = np.c_[xx.ravel(), yy.ravel()]  # Flatten grid
+            # Compute decision values on grid
+            response = np.zeros(len(grid_points), dtype=np.float64)
 
-            # Compute kernel response for each active alpha in current frame
+            # Only compute for non-zero alphas (support vectors)
             active_indices = np.where(np.abs(alphas) > 1e-10)[0]
-            for i in active_indices:
-                # Compute kernel response point-wise
-                response += alphas[i] * np.array(
-                    [
-                        kernel(xs[i], grid_point, **kernel_params)
-                        for grid_point in grid_points
-                    ],
-                ).reshape(xx.shape)
 
-            # Normalize the response
-            response = normalize_response(response)
+            if len(active_indices) > 0:
+                # Vectorized computation for efficiency
+                for i in active_indices:
+                    kernel_values = np.array(
+                        [
+                            kernel(xs[i], grid_point, **kernel_params)
+                            for grid_point in grid_points
+                        ],
+                        dtype=np.float64,
+                    )
+                    response = response + alphas[i] * kernel_values
 
-            # Clear existing contour collections but preserve scatter plot
+            response_reshaped = response.reshape(xx.shape)
+
+            # Clear existing contours
             for coll in ax.collections[:]:
-                if not isinstance(
-                    coll,
-                    plt.matplotlib.collections.PathCollection,
-                ):  # Scatter plots are PathCollections
+                if coll not in [points_pos, points_neg]:
                     coll.remove()
 
+            # Update decision boundary and confidence regions
+            if len(active_indices) > 0:
+                new_boundary = ax.contour(
+                    xx,
+                    yy,
+                    response_reshaped,
+                    levels=[0],
+                    colors="black",
+                    linewidths=2,
+                )
+                new_regions = ax.contourf(
+                    xx,
+                    yy,
+                    response_reshaped,
+                    levels=[-1000, 0, 1000],
+                    colors=["lightcoral", "lightblue"],
+                    alpha=0.3,
+                )
+            else:
+                # Empty boundary if no support vectors yet
+                new_boundary = ax.contour(
+                    xx,
+                    yy,
+                    np.zeros_like(xx),
+                    levels=[0],
+                    colors="black",
+                    linewidths=2,
+                )
+                new_regions = ax.contourf(
+                    xx,
+                    yy,
+                    np.zeros_like(xx),
+                    levels=[-1, 0, 1],
+                    colors=["lightcoral", "lightblue"],
+                    alpha=0.3,
+                )
+
+            # Highlight support vectors
+            support_vector_mask_pos = np.abs(alphas[true_labels == 1]) > 1e-10
+            support_vector_mask_neg = np.abs(alphas[true_labels == -1]) > 1e-10
+
+            # Update point sizes to highlight support vectors
+            points_pos.set_sizes([200 if sv else 100 for sv in support_vector_mask_pos])
+            points_neg.set_sizes([200 if sv else 100 for sv in support_vector_mask_neg])
+
+            # Update point edge colors to highlight support vectors
+            points_pos.set_edgecolors(
+                ["yellow" if sv else "black" for sv in support_vector_mask_pos],
+            )
+            points_neg.set_edgecolors(
+                ["yellow" if sv else "black" for sv in support_vector_mask_neg],
+            )
+
+            ax.set_title(f"Decision Boundary - Iteration {frame + 1}")
+
             if self.debug_mode and frame % 10 == 0:
-                print(f"Active points: {len(active_indices)}")
+                print(f"Active support vectors: {len(active_indices)}")
 
-            # Update visualization
-            new_surface = ax.contourf(xx, yy, response, levels=20, cmap="PuOr")
-            new_contours = ax.contour(
-                xx,
-                yy,
-                response,
-                levels=10,
-                colors="k",
-                alpha=0.2,
-                linewidths=0.5,
-            )
-            ax.clabel(new_contours, inline=True, fontsize=8, fmt="%.1f")
-
-            # Update scatter points dynamically based on alpha values
-            points_pos.set_color(
-                [
-                    "red" if abs(alpha) > 1e-10 else "gray"
-                    for alpha in alphas[true_labels == 1]
-                ],
-            )
-            points_neg.set_color(
-                [
-                    "red" if abs(alpha) > 1e-10 else "gray"
-                    for alpha in alphas[true_labels == -1]
-                ],
-            )
-
-            ax.set_title(f"Kernel Response Surface - Iteration {frame + 1}")
-
-            if self.debug_mode:
-                print(f"Frame {frame}: Active support vectors = {len(active_indices)}")
-                print("Normalized response range: [0, 1]")
-
-            return [new_surface, points_pos, points_neg, new_contours]
+            return [new_boundary, new_regions, points_pos, points_neg]
 
         # Initial grid position will be updated by visualizer
         component = AnimationComponent(
@@ -797,37 +765,95 @@ class PerceptronVisualizer:
 
         return component
 
-    # FIXME: Not sure if this is useful for kernelized perceptron animation since the kernel matrix does not change
-    # FIXME: create_kernel_matrix_component is untested
     def create_kernel_matrix_component(
         self,
         logs: Dict[str, Any],
     ) -> AnimationComponent:
-        """Shows the constant kernel matrix and current alpha-weighted values."""
-        kernel_matrix = logs["kernel_matrix"]
+        """Shows the kernel matrix heatmap with alpha values overlay.
+
+        Since the kernel matrix is constant during training, this component
+        focuses on showing how alpha values evolve relative to the kernel structure.
+        """
+        kernel_matrix = logs.get("kernel_matrix")
+
+        if kernel_matrix is None:
+            # Compute kernel matrix if not provided
+            xs = logs["feature_space"]
+            kernel = logs["kernel"]
+            kernel_params = logs["kernel_params"] or {}
+            n_samples = len(xs)
+            kernel_matrix = np.zeros((n_samples, n_samples))
+            for i in range(n_samples):
+                for j in range(n_samples):
+                    kernel_matrix[i, j] = kernel(xs[i], xs[j], **kernel_params)
+
+        n_samples = len(kernel_matrix)
 
         def setup(ax: Axes) -> List[Artist]:
-            im = ax.imshow(kernel_matrix, cmap="viridis", aspect="equal")
-            plt.colorbar(im, ax=ax)
-            ax.set_title("Kernel Matrix & Alpha Contributions")
-            ax.set_xticks(range(len(kernel_matrix)))
-            ax.set_yticks(range(len(kernel_matrix)))
+            # Create a more informative visualization
+            im = ax.imshow(
+                kernel_matrix,
+                cmap="RdBu_r",
+                aspect="equal",
+                vmin=-abs(kernel_matrix).max(),
+                vmax=abs(kernel_matrix).max(),
+            )
 
-            # Add secondary axis for alpha weights
-            ax2 = ax.twinx()
-            (alpha_line,) = ax2.plot([], [], "r-", label="Current Alphas")
-            ax2.set_ylabel("Alpha Values")
-            ax2.legend()
+            # Add colorbar
+            cbar = plt.colorbar(im, ax=ax, pad=0.02)
+            cbar.set_label("Kernel Value", rotation=270, labelpad=15)
 
-            return [im, alpha_line]
+            # Set ticks and labels
+            if n_samples <= 20:  # Only show individual labels for small datasets
+                ax.set_xticks(range(n_samples))
+                ax.set_yticks(range(n_samples))
+                ax.set_xticklabels([f"{i}" for i in range(n_samples)], fontsize=8)
+                ax.set_yticklabels([f"{i}" for i in range(n_samples)], fontsize=8)
+
+            ax.set_xlabel("Sample Index")
+            ax.set_ylabel("Sample Index")
+            ax.set_title("Kernel Matrix K(x_i, x_j)")
+
+            # Add grid for better readability
+            ax.set_xticks(np.arange(n_samples) - 0.5, minor=True)
+            ax.set_yticks(np.arange(n_samples) - 0.5, minor=True)
+            ax.grid(which="minor", color="gray", linestyle="-", linewidth=0.2)
+
+            # Initialize alpha indicators
+            alpha_indicators = []
+            for i in range(n_samples):
+                # Add markers on diagonal to show support vectors
+                marker = ax.plot(
+                    i,
+                    i,
+                    "o",
+                    color="yellow",
+                    markersize=0,
+                    markeredgecolor="black",
+                    markeredgewidth=1,
+                )[0]
+                alpha_indicators.append(marker)
+
+            return [im] + alpha_indicators
 
         def update(frame: int, ax: Axes, artists: List[Artist]) -> List[Artist]:
-            im, alpha_line = artists
+            alpha_indicators = artists[1:]
             alphas = logs["alphas"][frame]["alphas"]
 
-            # Show current alpha values alongside kernel matrix
-            alpha_line.set_data(range(len(alphas)), alphas)
-            ax.set_title(f"Kernel Matrix & Alphas - Iteration {frame}")
+            # Update support vector indicators
+            for i, (alpha, marker) in enumerate(zip(alphas, alpha_indicators)):
+                if abs(alpha) > 1e-10:
+                    # Support vector - show with size proportional to |alpha|
+                    marker.set_markersize(min(15, 5 + 10 * abs(alpha)))
+                    marker.set_color("yellow" if alpha > 0 else "cyan")
+                else:
+                    marker.set_markersize(0)
+
+            # Update title with iteration info
+            n_support = np.sum(np.abs(alphas) > 1e-10)
+            ax.set_title(
+                f"Kernel Matrix - Iteration {frame + 1} ({n_support} support vectors)",
+            )
 
             return artists
 
