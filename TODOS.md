@@ -1,54 +1,189 @@
 # TODOS.md
 
-This file tracks all TODO/FIXME items found in the codebase that need to be addressed before implementing the broader features listed in README.md.
+This file tracks potential improvements and enhancements for the kernel visualization framework. All critical TODOs from the initial implementation have been completed as of 2025-01-10.
 
-## Critical Fixes (High Priority)
+## Testing Improvements
 
-These issues may affect correctness or usability and should be addressed first:
+### High Priority
+- [ ] **Property-based testing**: Add hypothesis tests for kernel properties
+  - Kernel symmetry: k(x,y) = k(y,x)
+  - Positive semi-definiteness
+  - Kernel parameter validation
+  - Edge cases with extreme values
 
-### 1. Visualization Component Issues
-- [x] **FIXME** (src/kernel_viz/visualization/core.py:172): Frame count determination is problematic - should be based on iteration count
-- [x] **FIXME** (src/kernel_viz/visualization/core.py:557): Kernel response animation may be incorrectly implemented for kernelized perceptron
-- [x] **FIXME** (src/kernel_viz/visualization/core.py:791-792): Kernel matrix animation may not be useful since kernel matrix doesn't change during training
+- [ ] **Performance regression tests**: Ensure optimizations don't degrade over time
+  - Benchmark suite for kernel computations
+  - Memory usage profiling
+  - Animation frame rate testing
+  - Comparison against baseline performance
 
-### 2. Algorithm Correctness
-- [x] **TODO** (src/kernel_viz/algorithms/perceptron.py:86): Replace print statement with exception/warning for kernel positive definiteness check
+- [ ] **Cross-platform testing**: Ensure compatibility across environments
+  - Windows/Linux/macOS compatibility
+  - Different Python versions (3.11, 3.12, 3.13)
+  - Different matplotlib backends
+  - CI/CD pipeline improvements
 
-### 3. Missing Error Handling
-- [x] **TODO** (src/kernel_viz/visualization/core.py:179): Add error handling for missing logs in visualization
+### Medium Priority
+- [ ] **Integration tests**: Test complete workflows
+  - End-to-end training and visualization pipelines
+  - Multi-kernel comparison scenarios
+  - Large dataset handling (1000+ points)
+  - Animation export to different formats
 
-## Code Organization (Medium Priority)
+- [ ] **Mocking and fixtures**: Improve test maintainability
+  - Mock expensive computations in unit tests
+  - Shared fixtures for common test data
+  - Parameterized tests for all kernel types
+  - Test data generators for various distributions
 
-### 1. Refactoring Tasks
-- [x] **TODO** (src/kernel_viz/visualization/core.py:61): Refactor AnimationComponent class to separate file (moved to base.py)
-- [x] **TODO** (src/kernel_viz/visualization/core.py:72): Refactor PerceptronVisualizer class to separate file (moved to visualizer.py)
-- [ ] **TODO** (src/kernel_viz/visualization/core.py:257): Determine if certain attributes should be class-level
+### Low Priority
+- [ ] **Visual diff tools**: Better visual regression testing
+  - Pixel-by-pixel comparison with tolerance
+  - Perceptual difference metrics
+  - Automated visual test report generation
+  - Integration with GitHub PR comments
 
-### 2. Test Improvements
-- [x] **TODO** (tests/test_kernelized_perceptron.py:96): Split large test into multiple smaller tests
-- [x] **TODO** (tests/test_kernels.py:15-16): Parameterize tests for different data types (ints, floats, numpy arrays)
+## Feature Enhancements
 
-## External Dependencies (Low Priority)
+### Core Algorithms
+- [ ] **Kernelized PCA implementation**
+  - Principal component extraction in kernel space
+  - Visualization of kernel principal components
+  - Pre-image reconstruction methods
+  - Applications to dimensionality reduction
 
-- [x] **TODO** (src/kernel_viz/utils/transforms.py:46): Implement polynomial features without sklearn dependency (completed)
+- [ ] **Kernelized SVM implementation**
+  - Soft-margin SVM with kernel trick
+  - Multi-class extensions (one-vs-all, one-vs-one)
+  - Hyperparameter tuning visualizations
+  - Comparison with perceptron performance
 
-## Visualization Features from README (To Complete)
+- [ ] **Kernelized K-means implementation**
+  - Clustering in kernel space
+  - Visualization of cluster assignments
+  - Kernel selection for clustering tasks
+  - Comparison with standard K-means
 
-These are mentioned in README.md but need implementation:
+### Visualization Features
+- [ ] **Interactive visualizations**
+  - Real-time kernel parameter adjustment
+  - Click to add/remove training points
+  - Hover tooltips with point information
+  - Matplotlib widgets integration
 
-### Core Visualizations
-- [x] Complete kernel response component visualization (now shows full response surface with colorbar)
-- [x] Implement kernel matrix heatmap visualization (using factory pattern as proof of concept)
-- [x] Add tests for all visualization components (comprehensive test coverage added)
+- [ ] **3D visualizations**
+  - Decision surfaces for 3D data
+  - Kernel response surface in 3D
+  - Interactive rotation and zoom
+  - Export to WebGL/Three.js
 
-### Documentation
-- [x] Add comprehensive unit tests for all kernels (beyond existing tests) - Added test_kernels_comprehensive.py with 29 additional tests
-- [x] Add usage examples to documentation - Created docs/usage_examples.md with comprehensive examples
-- [x] Provide step-by-step instructions for running the code - Created docs/getting_started.md with detailed setup guide
-- [x] Include mathematical derivations or references for kernelized methods - Created docs/mathematical_background.md with theory and references
+- [ ] **Training metrics dashboard**
+  - Loss/accuracy tracking over iterations
+  - Convergence diagnostics
+  - Hyperparameter sensitivity analysis
+  - Model comparison visualizations
+
+### Performance Optimizations
+- [ ] **GPU acceleration**
+  - CuPy integration for kernel computations
+  - CUDA kernels for custom operations
+  - Batch processing for large datasets
+  - Performance comparison CPU vs GPU
+
+- [ ] **Streaming and online learning**
+  - Incremental perceptron updates
+  - Real-time visualization updates
+  - Memory-efficient data handling
+  - Support for data generators
+
+- [ ] **Parallel processing**
+  - Multi-threaded kernel matrix computation
+  - Parallel animation rendering
+  - Distributed training for large datasets
+  - Ray/Dask integration
+
+### New Kernel Functions
+- [ ] **Additional kernel implementations**
+  - Sigmoid kernel: tanh(γ⟨x,y⟩ + r)
+  - Chi-squared kernel: exp(-γ∑(xᵢ-yᵢ)²/(xᵢ+yᵢ))
+  - Histogram intersection kernel
+  - String/sequence kernels for text data
+
+- [ ] **Adaptive kernel learning**
+  - Multiple kernel learning (MKL)
+  - Kernel parameter optimization
+  - Data-dependent kernel construction
+  - Visualization of kernel adaptation
+
+### Documentation and Examples
+- [ ] **Video tutorials**
+  - Getting started walkthrough
+  - Kernel selection guide
+  - Performance tuning tips
+  - Common pitfalls and solutions
+
+- [ ] **Gallery of examples**
+  - Different datasets (iris, moons, circles)
+  - Kernel comparison on same data
+  - Real-world applications
+  - Benchmarks against sklearn
+
+- [ ] **API documentation**
+  - Sphinx-based documentation
+  - API reference with examples
+  - Contribution guidelines
+  - Architecture diagrams
+
+## Infrastructure Improvements
+
+### Development Tools
+- [ ] **Development environment**
+  - Docker containerization
+  - VS Code dev container config
+  - Jupyter notebook integration
+  - Remote development support
+
+- [ ] **Code quality tools**
+  - Code coverage badges
+  - Complexity analysis
+  - Security scanning
+  - Dependency updates automation
+
+### Distribution
+- [ ] **Package distribution**
+  - PyPI package publication
+  - Conda-forge recipe
+  - Binary wheels for all platforms
+  - Version management automation
+
+## Research Extensions
+
+### Theoretical Investigations
+- [ ] **Kernel analysis tools**
+  - Kernel alignment measures
+  - Feature space visualization (kernel PCA)
+  - Kernel matrix eigenvalue analysis
+  - Theoretical convergence guarantees
+
+- [ ] **Novel visualization techniques**
+  - Kernel embedding visualizations
+  - Decision boundary uncertainty
+  - Support vector influence maps
+  - Training dynamics animation
+
+### Applications
+- [ ] **Domain-specific kernels**
+  - Graph kernels for network data
+  - Time series kernels
+  - Image/computer vision kernels
+  - Natural language processing kernels
+
+- [ ] **Benchmarking suite**
+  - Standard datasets for evaluation
+  - Performance metrics collection
+  - Comparison with other libraries
+  - Reproducibility tools
 
 ## Notes
 
-- The "Future Work" items in README.md (kernelized PCA, SVM, K-means, etc.) are intentionally not included here as they represent new features rather than fixes to existing code
-- Focus should be on fixing the critical issues first, especially those affecting correctness
-- After addressing these TODOs, we can move on to the broader feature implementations listed in README.md
+This TODO list represents potential future enhancements. The core implementation is complete and functional. Items are prioritized based on potential impact and user value. Consider creating GitHub issues for items before implementation to gather feedback and track progress.

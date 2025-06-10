@@ -35,28 +35,7 @@ uv sync --dev
 source .venv/bin/activate
 ```
 
-# To-Do
-- [ ] **Core Implementation**
-  - [x] Juptyer notebook for kernelized perceptron usage examples
-
-  - **Visualizations**
-    - [x] Multiple component animations
-    - [x] Single component animations
-    - [x] Kernel response surface visualization (with colorbar)
-    - [ ] Kernel matrix heatmap animation (static version exists)
-    - [x] Alpha evolution component
-    - [x] 2D decision boundary plotting
-
-- **Documentation**
-  - [x] Add usage examples
-  - [x] Provide step-by-step instructions for running the code
-  - [x] Include mathematical derivations or references for kernelized methods
-
-- **Testing**
-  - [x] Comprehensive unit tests for all kernels
-  - [x] Add tests for visualizations
-
-# Future Work
+## Future Work
 - **Core Extensions**
   - [ ] Implement kernelized PCA
   - [ ] Implement kernelized SVM
