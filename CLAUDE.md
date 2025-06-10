@@ -104,3 +104,11 @@ Pre-commit is configured with the following tools:
 - **General**: trailing-whitespace, end-of-file-fixer, check-yaml
 
 All tool configurations are centralized in pyproject.toml for consistency.
+
+## Memories
+
+- Always review the claude.md, readme.md when starting a new session.
+- Always update the claude.md and readme.md when meaningful changes have been made to the project.
+- Ensure the tests pass, resolve them first in the code base assuming the code is wrong until you can prove the test itself is bad.
+- Commit with a meaningful summary of what you did after each major implementation change and logical unit of complete work. Do not skip pre-commit checks to bypass errors. Resolve the errors instead.
+- Assuming tests pass, commit is successful and documentation is updated and committed, push the changes to origin.
