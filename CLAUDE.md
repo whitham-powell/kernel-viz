@@ -4,10 +4,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Development Environment
 
-This project uses Python 3.13 with pipenv for dependency management. Set up the environment with:
+This project uses Python 3.13 with uv for dependency management. Set up the environment with:
 ```bash
-pipenv install --dev
-pipenv shell
+# Install uv if not already installed
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Create virtual environment and install dependencies
+uv sync --dev
+
+# Activate the virtual environment
+source .venv/bin/activate
 ```
 
 ## Common Commands
@@ -78,7 +84,7 @@ This is a kernel visualization framework for statistical learning, specifically 
 
 ### Testing Configuration
 
-Tests use pytest with matplotlib plot comparison (pytest-mpl). Test configuration in setup.cfg includes:
+Tests use pytest with matplotlib plot comparison (pytest-mpl). Test configuration in pyproject.toml includes:
 - `--mpl` flag for plot comparisons
 - Type checking with mypy (strict mode)
 - Code formatting with black (88 character line length)
@@ -88,4 +94,14 @@ Tests use pytest with matplotlib plot comparison (pytest-mpl). Test configuratio
 
 Core: numpy, matplotlib, scikit-learn, scipy, pandas, seaborn
 Video: ffmpeg-python (requires system ffmpeg for animation export)
-Dev: pytest, black, flake8, mypy, isort, bandit
+Dev: pytest, black, flake8, mypy, isort, bandit, pre-commit
+
+### Pre-commit Hooks
+
+Pre-commit is configured with the following tools:
+- **Formatters**: black, isort, yamlfmt, add-trailing-comma
+- **Linters**: flake8 (with flake8-pyproject), mypy
+- **Security**: bandit (runs on pre-push)
+- **General**: trailing-whitespace, end-of-file-fixer, check-yaml
+
+All tool configurations are centralized in pyproject.toml for consistency.

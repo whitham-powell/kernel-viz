@@ -3,36 +3,40 @@ exclude: '^(.*/)?scratch\.py$'
 repos:
   # Formatters
   - repo: https://github.com/psf/black
-    rev: 24.10.0
+    rev: 25.1.0
     hooks:
       - id: black
         files: \.py$ # Target only Python files
+        args: ["--config=pyproject.toml"]
   - repo: https://github.com/pre-commit/mirrors-isort
     rev: v5.10.1
     hooks:
       - id: isort
         files: \.py$ # Target only Python files
+        args: ["--settings-path=pyproject.toml"]
   - repo: https://github.com/google/yamlfmt
     rev: v0.14.0
     hooks:
       - id: yamlfmt
   # Linters
   - repo: https://github.com/pycqa/flake8
-    rev: 7.1.1
+    rev: 7.2.0
     hooks:
       - id: flake8
         files: \.py$ # Target only Python files
         # Linter for Python code style and quality checks
+        additional_dependencies: [flake8-pyproject]
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.13.0
+    rev: v1.16.0
     hooks:
       - id: mypy
         additional_dependencies:
           - numpy
-        args: ["--config-file=setup.cfg"]
+          - types-PyYAML
+        args: ["--config-file=pyproject.toml"]
   # Security Tools
   - repo: https://github.com/PyCQA/bandit
-    rev: 1.8.0
+    rev: 1.8.3
     hooks:
       - id: bandit
         name: Bandit Security Scanner

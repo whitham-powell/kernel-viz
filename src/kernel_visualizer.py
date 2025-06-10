@@ -40,6 +40,7 @@ def compute_decision_boundary(
     grid = np.c_[xx.ravel(), yy.ravel()]
 
     zz = []
+    kernel_kwargs = kernel_params or {}
     for point in grid:
         full_point = fixed_x.copy()
         full_point[0] = point[0]
@@ -47,7 +48,7 @@ def compute_decision_boundary(
         zz.append(
             np.sum(
                 [
-                    alphas[j] * kernel(xs[j], full_point, **kernel_params)
+                    alphas[j] * kernel(xs[j], full_point, **kernel_kwargs)
                     for j in range(len(xs))
                 ],
             ),
