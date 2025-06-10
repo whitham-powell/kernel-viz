@@ -37,10 +37,10 @@ uv run pytest tests/test_kernels.py  # Run specific test file
 Code quality is handled automatically by pre-commit hooks on commit. To run manually:
 ```bash
 # Run all pre-commit hooks
-uv run pre-commit run --all-files
+uvx pre-commit run --all-files
 
 # Install pre-commit hooks (run once after setup)
-uv run pre-commit install
+uvx pre-commit install
 ```
 
 ### Running Demos
@@ -92,7 +92,9 @@ Tests use pytest with matplotlib plot comparison (pytest-mpl). Test configuratio
 
 Core: numpy, matplotlib, scikit-learn, scipy, pandas, seaborn
 Video: ffmpeg-python (requires system ffmpeg for animation export)
-Dev: pytest, pytest-cov, pytest-mpl, pre-commit, ipykernel
+Dev: pytest, pytest-cov, pytest-mpl, ipykernel
+
+Note: pre-commit is managed via uvx (system-wide tool), not as a dev dependency.
 
 ### Pre-commit Hooks
 

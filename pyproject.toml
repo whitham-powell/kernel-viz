@@ -34,11 +34,10 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "ipykernel",
-    "pytest-cov",
-    "pytest",
-    "pytest-mpl",
-    "pre-commit",
+    "ipykernel>=6.29.5",
+    "pytest>=8.4.0",
+    "pytest-cov>=6.1.1",
+    "pytest-mpl>=0.17.0",
 ]
 
 [project.urls]

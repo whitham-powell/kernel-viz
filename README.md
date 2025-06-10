@@ -79,15 +79,19 @@ For convenience, common tasks are available via Makefile shortcuts:
 # Show all available commands
 make help
 
-# Install dependencies
-make install
+# Setup environment
+make env           # install package with dev dependencies
 
 # Run tests
 make test          # run all tests (includes matplotlib plot comparison)
 make test-cov      # with coverage
 make test-simple   # without matplotlib comparison (faster)
 
-# Setup and utilities
+# Dependency management
+make add dep=package_name      # add new dependency
+make add-dev dep=package_name  # add new dev dependency
+
+# Setup utilities
 make pre-commit    # install pre-commit hooks
 
 # Run demos
@@ -108,8 +112,8 @@ uv run pytest tests/test_kernels.py  # Run specific test file
 uv run pytest --mpl             # Run tests with matplotlib plot comparison
 
 # Code Quality (handled automatically by pre-commit on commit)
-uv run pre-commit run --all-files        # Manually run all hooks
-uv run pre-commit install                # Install pre-commit hooks
+uvx pre-commit run --all-files           # Manually run all hooks
+uvx pre-commit install                   # Install pre-commit hooks
 
 # Running Demos
 uv run python presentation_demos.py
