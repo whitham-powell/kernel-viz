@@ -205,7 +205,7 @@ class PerceptronVisualizer:
 
         # Main figure layout configuration
         self.figure.tight_layout(pad=1.75)
-        # TODO should this be a class attribute?
+        # Calculate animation interval from fps (milliseconds per frame)
         interval = 1000 / fps
 
         self._animation = FuncAnimation(

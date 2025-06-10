@@ -1,12 +1,10 @@
 """Builder pattern implementation for visualization components."""
 
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional
 
-import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.artist import Artist
 from matplotlib.axes import Axes
-from numpy.typing import ArrayLike
 
 from .base import AnimationComponent
 from .core import compute_decision_boundary
@@ -15,15 +13,17 @@ from .core import compute_decision_boundary
 class ComponentBuilder:
     """Builder for creating visualization components step by step."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize builder with empty state."""
         self.reset()
 
     def reset(self) -> "ComponentBuilder":
         """Reset builder to initial state."""
         self._logs: Optional[Dict[str, Any]] = None
-        self._setup_func: Optional[Callable] = None
-        self._update_func: Optional[Callable] = None
+        self._setup_func: Optional[Callable[[Axes], List[Artist]]] = None
+        self._update_func: Optional[
+            Callable[[int, Axes, List[Artist]], List[Artist]]
+        ] = None
         self._subplot_params: Dict[str, Any] = {"gridspec": (0, 0)}
         self._name: Optional[str] = None
         return self
@@ -49,7 +49,7 @@ class ComponentBuilder:
         self._update_func = update_func
         return self
 
-    def with_subplot_params(self, **params) -> "ComponentBuilder":
+    def with_subplot_params(self, **params: Any) -> "ComponentBuilder":
         """Set subplot parameters."""
         self._subplot_params = params
         return self
@@ -75,7 +75,7 @@ class ComponentBuilder:
 class DecisionBoundaryBuilder(ComponentBuilder):
     """Specialized builder for decision boundary components."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize with decision boundary defaults."""
         super().__init__()
         self._plot_type: str = "contour"
@@ -157,6 +157,7 @@ class DecisionBoundaryBuilder(ComponentBuilder):
             for artist in ax.collections[1:]:
                 artist.remove()
 
+            assert self._logs is not None  # Checked in auto_configure
             alphas = self._logs["alphas"][frame]["alphas"]
             xx, yy, zz = compute_decision_boundary(
                 xs,
@@ -200,7 +201,7 @@ class DecisionBoundaryBuilder(ComponentBuilder):
 class AlphaEvolutionBuilder(ComponentBuilder):
     """Specialized builder for alpha evolution components."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize with alpha evolution defaults."""
         super().__init__()
         self._show_inactive = True
