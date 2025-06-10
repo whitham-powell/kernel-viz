@@ -1,6 +1,5 @@
 # kernel_visualizer.py
 import time
-from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import matplotlib.pyplot as plt
@@ -13,6 +12,8 @@ from matplotlib.contour import QuadContourSet
 from matplotlib.gridspec import GridSpec
 from numpy.typing import ArrayLike, NDArray
 from typing_extensions import TypeAlias
+
+from .base import AnimationComponent
 
 ContourOutput: TypeAlias = Union[QuadContourSet, List[PathCollection]]
 
@@ -56,17 +57,6 @@ def compute_decision_boundary(
     zz = np.array(zz).reshape(xx.shape)  # type: ignore
 
     return xx, yy, zz
-
-
-# TODO: refactor AnimationComponent class to PerceptronVisualizer file
-@dataclass
-class AnimationComponent:
-    """Represents a single visualization component."""
-
-    setup_func: Callable[[Axes], List[Artist]]
-    update_func: Callable[[int, Axes, List[Artist]], List[Artist]]
-    subplot_params: Dict[str, Any]
-    name: Optional[str] = None
 
 
 # TODO: refactor PerceptronVisualizer class to PerceptronVisualizer file
