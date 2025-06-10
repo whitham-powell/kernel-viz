@@ -35,15 +35,9 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "ipykernel",
-    "flake8",
-    "black",
-    "isort",
     "pytest-cov",
     "pytest",
     "pytest-mpl",
-    "mypy",
-    "yamllint",
-    "pyyaml",
     "pre-commit",
 ]
 

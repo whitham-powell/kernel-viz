@@ -18,38 +18,38 @@ source .venv/bin/activate
 
 ## Common Commands
 
+Use Makefile shortcuts for convenience, or run uv commands directly.
+
 ### Testing
 ```bash
-# Run all tests
-pytest
+# Makefile shortcuts
+make test          # Run all tests
+make test-cov      # Run tests with coverage
+make test-simple   # Run tests without matplotlib comparison
 
-# Run tests with coverage
-pytest --cov
-
-# Run specific test file
-pytest tests/test_kernels.py
-
-# Run tests with matplotlib plot comparison (configured in setup.cfg)
-pytest --mpl
+# Direct uv commands
+uv run pytest                    # Run all tests
+uv run pytest --cov             # Run tests with coverage
+uv run pytest tests/test_kernels.py  # Run specific test file
 ```
 
 ### Code Quality
+Code quality is handled automatically by pre-commit hooks on commit. To run manually:
 ```bash
-# Format code
-black src/ tests/
-isort src/ tests/
+# Run all pre-commit hooks
+uv run pre-commit run --all-files
 
-# Lint code
-flake8 src/ tests/
-
-# Type checking
-mypy src/
-
+# Install pre-commit hooks (run once after setup)
+uv run pre-commit install
 ```
 
 ### Running Demos
 ```bash
-python presentation_demos.py
+# Makefile shortcut
+make demo
+
+# Direct uv command
+uv run python presentation_demos.py
 ```
 
 ## Architecture Overview
@@ -92,7 +92,7 @@ Tests use pytest with matplotlib plot comparison (pytest-mpl). Test configuratio
 
 Core: numpy, matplotlib, scikit-learn, scipy, pandas, seaborn
 Video: ffmpeg-python (requires system ffmpeg for animation export)
-Dev: pytest, black, flake8, mypy, isort, pre-commit
+Dev: pytest, pytest-cov, pytest-mpl, pre-commit, ipykernel
 
 ### Pre-commit Hooks
 

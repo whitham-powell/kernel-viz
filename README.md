@@ -72,38 +72,47 @@ source .venv/bin/activate
   - [ ] Performance optimizations for large datasets
 ## Usage
 
-### Running Tests
+### Quick Start with Makefile
+For convenience, common tasks are available via Makefile shortcuts:
+
 ```bash
-# Run all tests
-pytest
+# Show all available commands
+make help
 
-# Run tests with coverage
-pytest --cov
+# Install dependencies
+make install
 
-# Run specific test file
-pytest tests/test_kernels.py
+# Run tests
+make test          # run all tests (includes matplotlib plot comparison)
+make test-cov      # with coverage
+make test-simple   # without matplotlib comparison (faster)
 
-# Run tests with matplotlib plot comparison
-pytest --mpl
+# Setup and utilities
+make pre-commit    # install pre-commit hooks
+
+# Run demos
+make demo
+
+# Clean cache files
+make clean
 ```
 
-### Code Quality
+### Direct Commands
+You can also run commands directly using uv:
+
 ```bash
-# Format code
-black src/ tests/
-isort src/ tests/
+# Running Tests
+uv run pytest                    # Run all tests
+uv run pytest --cov             # Run tests with coverage
+uv run pytest tests/test_kernels.py  # Run specific test file
+uv run pytest --mpl             # Run tests with matplotlib plot comparison
 
-# Lint code
-flake8 src/ tests/
+# Code Quality (handled automatically by pre-commit on commit)
+uv run pre-commit run --all-files        # Manually run all hooks
+uv run pre-commit install                # Install pre-commit hooks
 
-# Type checking
-mypy src/
-
-```
-
-### Running Demos
-```bash
-python presentation_demos.py
+# Running Demos
+uv run python presentation_demos.py
 ```
 
 ## Features
