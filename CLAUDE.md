@@ -145,21 +145,22 @@ Always prioritize fixing existing issues before adding new features.
 - Both visualizations now work properly with appropriate visual elements
 - Split large XOR test into focused unit tests
 - Parameterized kernel tests to reduce duplication (LinearKernel, AffineKernel)
-- All 300+ tests passing
+- Refactored visualization components into separate files:
+  - base.py: AnimationComponent dataclass
+  - visualizer.py: PerceptronVisualizer core class
+  - core.py: Component creation methods (attached via monkey patching)
+- All 307 tests passing (306 passed, 1 xpassed)
 
 ### Current Status
-- **Where we left off**: Started refactoring visualization classes to separate files (created base.py but reverted)
-- Next task to resume: Complete refactoring of visualization components from core.py into:
-  - base.py (AnimationComponent class)
-  - visualizer.py (PerceptronVisualizer class)
-  - components.py (individual visualization components)
-  - Keep compute_decision_boundary() in core.py or move to utilities
+- **Where we left off**: Completed visualization refactoring with a pragmatic approach
+- Component creation methods remain in core.py for now (tightly coupled with implementation details)
+- Uses monkey patching to maintain backward compatibility
 
 ### Next Priority Tasks
-1. Refactor visualization classes to separate files (medium priority) - IN PROGRESS
-2. Implement kernel matrix heatmap animation (static version exists)
-3. Add comprehensive tests for visualization components
-4. Consider performance optimizations for kernel response surface
+1. Implement kernel matrix heatmap animation (static version exists)
+2. Add comprehensive tests for visualization components
+3. Consider performance optimizations for kernel response surface
+4. Future: Consider further refactoring of component methods if they grow too large
 
 ## Memories
 

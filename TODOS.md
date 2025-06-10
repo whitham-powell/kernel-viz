@@ -20,8 +20,8 @@ These issues may affect correctness or usability and should be addressed first:
 ## Code Organization (Medium Priority)
 
 ### 1. Refactoring Tasks
-- [ ] **TODO** (src/kernel_viz/visualization/core.py:61): Refactor AnimationComponent class to separate file
-- [ ] **TODO** (src/kernel_viz/visualization/core.py:72): Refactor PerceptronVisualizer class to separate file
+- [x] **TODO** (src/kernel_viz/visualization/core.py:61): Refactor AnimationComponent class to separate file (moved to base.py)
+- [x] **TODO** (src/kernel_viz/visualization/core.py:72): Refactor PerceptronVisualizer class to separate file (moved to visualizer.py)
 - [ ] **TODO** (src/kernel_viz/visualization/core.py:257): Determine if certain attributes should be class-level
 
 ### 2. Test Improvements
