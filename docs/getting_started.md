@@ -189,7 +189,7 @@ y = np.array([1, -1, -1, 1], dtype=np.float64)
 # Train with logging
 logger = PerceptronLogger()
 alphas = kernelized_perceptron(
-    X, y, 
+    X, y,
     kernel=rbf_gaussian_kernel,
     kernel_params={'sigma': 0.5},
     max_epochs=20,
@@ -228,7 +228,7 @@ for name, kernel, params in kernels:
         max_epochs=50,
         logger=logger
     )
-    
+
     misclassifications = logger.get_logs()['misclassification_count']
     print(f"{name} kernel: Final misclassifications = {misclassifications[-1]}")
 ```

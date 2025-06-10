@@ -84,10 +84,21 @@ def test_min_max_scale_zero_range_avoid_div_by_zero():
         (np.array([[1, 2]]), 3, np.array([[1, 1, 2, 1, 2, 4, 1, 2, 4, 8]])),  # Degree 3
         (np.array([[1, 2]]), 0, np.array([[1]])),  # Degree 0 (only bias)
         (np.array([[1, 2]]), 1, np.array([[1, 1, 2]])),  # Degree 1 (linear)
-        (np.array([[1, 2], [3, 4]]), 2, np.array([[1, 1, 2, 1, 2, 4], [1, 3, 4, 9, 12, 16]])),  # Multiple samples
+        (
+            np.array([[1, 2], [3, 4]]),
+            2,
+            np.array([[1, 1, 2, 1, 2, 4], [1, 3, 4, 9, 12, 16]]),
+        ),  # Multiple samples
         (np.array([[5]]), 3, np.array([[1, 5, 25, 125]])),  # Single feature
     ],
-    ids=["degree_2", "degree_3", "degree_0", "degree_1", "multiple_samples", "single_feature"],
+    ids=[
+        "degree_2",
+        "degree_3",
+        "degree_0",
+        "degree_1",
+        "multiple_samples",
+        "single_feature",
+    ],
 )
 def test_polynomial_features(features, degree, expected):
     result = polynomial_features(features, degree)
@@ -112,7 +123,7 @@ def test_polynomial_features_empty_features():
 def test_polynomial_features_matches_sklearn():
     """Test that our implementation matches sklearn's PolynomialFeatures."""
     from sklearn.preprocessing import PolynomialFeatures as SklearnPolyFeatures
-    
+
     # Test various configurations
     test_cases = [
         # (features, degree)
@@ -123,15 +134,15 @@ def test_polynomial_features_matches_sklearn():
         (np.array([[0.5, -1.5, 2.0]]), 3),
         (np.array([[7]]), 4),  # Single feature
     ]
-    
+
     for features, degree in test_cases:
         # Our implementation
         our_result = polynomial_features(features, degree)
-        
+
         # Sklearn implementation
         sklearn_poly = SklearnPolyFeatures(degree=degree, include_bias=True)
         sklearn_result = sklearn_poly.fit_transform(features)
-        
+
         # Compare results
         assert np.allclose(our_result, sklearn_result), (
             f"Mismatch for features {features} with degree {degree}:\n"

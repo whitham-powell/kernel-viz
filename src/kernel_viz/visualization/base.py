@@ -1,4 +1,5 @@
 """Base classes for visualization components."""
+
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional
 

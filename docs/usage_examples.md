@@ -214,7 +214,7 @@ classifiers = []
 for class_label in [-1, 0, 1]:
     # Create binary labels
     y_binary = np.where(y == class_label, 1, -1)
-    
+
     logger = PerceptronLogger()
     alphas = kernelized_perceptron(
         X, y_binary,
@@ -223,7 +223,7 @@ for class_label in [-1, 0, 1]:
         max_epochs=50,
         logger=logger
     )
-    
+
     classifiers.append({
         'class': class_label,
         'alphas': alphas,
@@ -235,14 +235,14 @@ fig, axes = plt.subplots(1, 3, figsize=(15, 5))
 for idx, clf in enumerate(classifiers):
     visualizer = PerceptronVisualizer()
     logs = clf['logger'].get_logs()
-    
+
     # Create decision boundary
     component = visualizer.create_decision_boundary_component(logs)
-    
+
     # Custom setup for subplot
     plt.sca(axes[idx])
     axes[idx].set_title(f"Class {clf['class']} vs Rest")
-    
+
     # Manually run setup and final frame
     artists = component.setup_func(axes[idx])
     component.update_func(len(logs['alphas']) - 1, axes[idx], artists)
@@ -262,7 +262,7 @@ def create_composite_kernel():
         (linear_kernel, {}),
         (rbf_gaussian_kernel, {'sigma': 1.0}),
     ]
-    
+
     # Additive combination: k(x,y) = k1(x,y) + k2(x,y)
     return lambda x, y: additive_kernel(x, y, kernels)
 
@@ -303,7 +303,7 @@ kernels_to_test = [
 results = []
 for name, kernel, params in kernels_to_test:
     logger = PerceptronLogger()
-    
+
     alphas = kernelized_perceptron(
         X_train, y_train,
         kernel=kernel,
@@ -311,14 +311,14 @@ for name, kernel, params in kernels_to_test:
         max_epochs=100,
         logger=logger
     )
-    
+
     # Test accuracy
     correct = 0
     for i in range(len(X_test)):
         pred = predict(X_test[i], X_train, alphas, kernel, params)
         if pred == y_test[i]:
             correct += 1
-    
+
     accuracy = correct / len(X_test)
     results.append({
         'kernel': name,
@@ -326,7 +326,7 @@ for name, kernel, params in kernels_to_test:
         'support_vectors': np.sum(np.abs(alphas) > 1e-10),
         'logger': logger
     })
-    
+
     print(f"{name} Kernel: {accuracy:.2%} accuracy, "
           f"{results[-1]['support_vectors']} support vectors")
 ```
@@ -340,12 +340,12 @@ def precompute_kernel_matrix(X, kernel, kernel_params=None):
     n = len(X)
     K = np.zeros((n, n))
     kernel_params = kernel_params or {}
-    
+
     for i in range(n):
         for j in range(i, n):  # Exploit symmetry
             K[i, j] = kernel(X[i], X[j], **kernel_params)
             K[j, i] = K[i, j]
-    
+
     return K
 
 # Use in logger

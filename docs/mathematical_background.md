@@ -151,10 +151,10 @@ For RBF kernel with feature map $\phi$:
 ### Kernel Selection
 
 1. **Linear kernel**: Use when data is likely linearly separable
-2. **Polynomial kernel**: 
+2. **Polynomial kernel**:
    - Low degree (2-3) for moderate non-linearity
    - Higher degree risks overfitting
-3. **RBF kernel**: 
+3. **RBF kernel**:
    - Universal approximator
    - Good default choice
    - Tune $\sigma$ carefully

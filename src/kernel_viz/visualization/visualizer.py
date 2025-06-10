@@ -1,4 +1,5 @@
 """Main visualizer class for perceptron animations."""
+
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
